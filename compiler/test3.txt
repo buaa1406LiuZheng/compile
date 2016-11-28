@@ -1,0 +1,79 @@
+const int i1 = 1, i2 = 2;
+const char c1 = '_';
+const int i3 = 3;
+const char c2 = '+', c3 = '-';
+
+int vi1, vi2, vi3[20], vi4[30];
+int vi5[10], vi6;
+int vi7;
+int vi8[30];
+char vc1, vc2, vc3[20], vc4[30];
+char vc5[10], vc6;
+char vc7;
+char vc8[30];
+
+int foo1(int a, int b){
+    return(a);
+}
+int foo2(){
+    int vi1, vi2, vi3[20], vi4[30];
+    int vi5[10], vi6;
+    int vi7;
+    int vi8[30];
+    char vc1, vc2, vc3[20], vc4[30];
+    char vc5[10], vc6;
+    char vc7;
+    char vc8[30];
+    return(1);
+}
+void foo3(char a, char b){
+    return;
+}
+char foo4(){
+    const int i1 = 1, i2 = 2;
+    const char c1 = '_';
+    const int i3 = 3;
+    const char c2 = '+', c3 = '-';
+    return(c1);
+}
+
+void main(){
+    const int i1 = 1, i2 = 2;
+    const char c1 = '_';
+    const int i3 = 3;
+    const char c2 = '+', c3 = '-';
+
+    int vi1, vi2, vi3[20], vi4[30];
+    int vi5[10], vi6;
+    int vi7;
+    int vi8[30];
+    char vc1, vc2, vc3[20], vc4[30];
+    char vc5[10], vc6;
+    char vc7;
+    char vc8[30];
+    int i,a,b,x,y;
+
+    scanf(i,a,b,x,y);
+    i = --6+b*y*(-x)/(a-b*c+foo1(vi1[vi4[vi1]+vi2],vi5[a*(x+y)])*x-'b')-'c'+100*vc3[vc4[vc1]+vc2]+0;
+    vi1[i] = 0;
+
+    foo2();
+    foo3(c2,c3);
+
+    printf("233",vi1[i]);
+    printf("666");
+    printf(vc8[20]+100*vc1[b+x*y]);
+    if(a==b);
+    if(a<=b);else{}
+    do;while(1)
+    for(a = 0;a<10;a=a+1);
+    for(a = 10;a>0;a=a-1){;}
+    {
+        if(a==b);
+        if(a<=b);else{}
+        do;while(1)
+        for(a = 0;a<10;a=a+1);
+        for(a = 10;a>0;a=a-1){;}
+    }
+    return;
+}
