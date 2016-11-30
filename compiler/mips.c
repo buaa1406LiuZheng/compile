@@ -76,7 +76,7 @@ int get_val(char *id, int *is_id_int, int *is_id_global){
 void load_val(char *id, int is_id_global, int id_value, char* reg){
     //将变量id放入reg代表的寄存器中，过程使用了$t9
     if(is_id_global){
-        fprintf(fout,"la $t9 %s\n",id);
+        fprintf(fout,"la $t9 _%s\n",id);
         fprintf(fout,"lw %s 0($t9)\n",reg);
     } else{
         fprintf(fout,"lw %s %d($fp)\n",reg, id_value);
@@ -89,7 +89,7 @@ void store_val(char *id, int is_id_global, int id_value, char* reg){
     i = find(id);
 
     if(is_id_global){
-        fprintf(fout,"la $t9 %s\n",id);
+        fprintf(fout,"la $t9 _%s\n",id);
         if(table[i].typ == CHAR){
             fprintf(fout,"sb %s 0($t9)\n",reg);
         } else {
@@ -459,16 +459,28 @@ void rar_gen(quadruples quad){
     r_value = get_val(r, &is_r_int, &is_r_global);
 
     i = find_local(x);
-    x_position = local_table[i].position;   //找到数组x在内存中的地址
-
-    //将x[y]存在$t1
-    if(is_y_int){   //y是立即数
-        fprintf(fout,"lw $t1 %d($fp)\n",-y_value*4+x_position);
-    } else{
-        load_val(y,is_y_global,y_value,"$t0");
-        fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
-        fprintf(fout,"sub $t0 $fp $t0\n");
-        fprintf(fout,"lw $t1 %d($t0)\n",x_position);
+    if(i!=-1) {
+        x_position = local_table[i].position;   //找到数组x在内存中的地址
+        //将$t1存在x[y]
+        if(is_y_int){   //y是立即数
+            fprintf(fout,"lw $t1 %d($fp)\n",-y_value*4+x_position);
+        } else{ //将x[y]地址放在$t0
+            load_val(y,is_y_global,y_value,"$t0");
+            fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
+            fprintf(fout,"sub $t0 $fp $t0\n");
+            fprintf(fout,"lw $t1 %d($t0)\n",x_position);
+        }
+    } else{ //x是全局变量
+        fprintf(fout,"la $t2 _%s\n",x);
+        //将$t1存在x[y]，将x[y]地址放在$t2
+        if(is_y_int){   //y是立即数
+            fprintf(fout,"lw $t1 %d($t2)\n",y_value*4);
+        } else{
+            load_val(y,is_y_global,y_value,"$t0");
+            fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
+            fprintf(fout,"add $t2 $t2 $t0\n");
+            fprintf(fout,"lw $t1 0($t2)\n");
+        }
     }
 
     store_val(r, is_r_global, r_value, "$t1");
@@ -491,9 +503,6 @@ void war_gen(quadruples quad){
     y_value = get_val(y, &is_y_int, &is_y_global);
     r_value = get_val(r, &is_r_int, &is_r_global);
 
-    i = find_local(x);
-    x_position = local_table[i].position;   //找到数组x在内存中的地址
-
     //将r的值存在$t1
     if(is_r_int){   //r是常数
         fprintf(fout,"li $t1 %d\n",r_value);
@@ -501,14 +510,29 @@ void war_gen(quadruples quad){
         load_val(r,is_r_global,r_value,"$t1");
     }
 
-    //将$t1存在x[y]
-    if(is_y_int){   //y是立即数
-        fprintf(fout,"sw $t1 %d($fp)\n",-y_value*4+x_position);
-    } else{
-        load_val(y,is_y_global,y_value,"$t0");
-        fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
-        fprintf(fout,"sub $t0 $fp $t0\n");
-        fprintf(fout,"sw $t1 %d($t0)\n",x_position);
+    i = find_local(x);
+    if(i!=-1) {
+        x_position = local_table[i].position;   //找到数组x在内存中的地址
+        //将$t1存在x[y]
+        if(is_y_int){   //y是立即数
+            fprintf(fout,"sw $t1 %d($fp)\n",-y_value*4+x_position);
+        } else{ //将x[y]地址放在$t0
+            load_val(y,is_y_global,y_value,"$t0");
+            fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
+            fprintf(fout,"sub $t0 $fp $t0\n");
+            fprintf(fout,"sw $t1 %d($t0)\n",x_position);
+        }
+    } else{ //x是全局变量
+        fprintf(fout,"la $t2 _%s\n",x);
+        //将$t1存在x[y]，将x[y]地址放在$t2
+        if(is_y_int){   //y是立即数
+            fprintf(fout,"sw $t1 %d($t2)\n",y_value*4);
+        } else{
+            load_val(y,is_y_global,y_value,"$t0");
+            fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
+            fprintf(fout,"add $t2 $t2 $t0\n");
+            fprintf(fout,"sw $t1 0($t2)\n");
+        }
     }
 
 }
@@ -679,7 +703,7 @@ void call_gen(quadruples quad){
     if(para_num>4){
         fprintf(fout,"addi $sp $sp %d\n", -4*(para_num-4));
     }
-    fprintf(fout, "jal %s\n",r);
+    fprintf(fout, "jal _%s\n",r);
     if(para_num>4){
         fprintf(fout,"addi $sp $sp %d\n", 4*(para_num-4));
     }
@@ -744,9 +768,9 @@ void initialize(){
 
         strcpy(name,table[i].name);
         if(table[i].lenth==0){
-            fprintf(fout,"%s: .space %d\n",name, 4);
+            fprintf(fout,"_%s: .space %d\n",name, 4);
         } else{
-            fprintf(fout,"%s: .space %d\n",name, table[i].lenth*4);
+            fprintf(fout,"_%s: .space %d\n",name, table[i].lenth*4);
         }
     }
 
@@ -767,7 +791,7 @@ void initialize(){
         fprintf(fout, "\"\n");
     }
 
-    fprintf(fout, "\n.text\nj main\n");
+    fprintf(fout, "\n.text\nj _main\n");
 }
 
 void fun_initialize(fun_table_item fun){
@@ -779,7 +803,7 @@ void fun_initialize(fun_table_item fun){
     int tempval_begin;  //临时变量在局部变量表中的起始地址
     quadruples temp_code;
 
-    fprintf(fout,"\n%s:\n",fun.name);
+    fprintf(fout,"\n_%s:\n",fun.name);
 
     //3个参数压栈
     for(i = 3;i>=0;i--){
@@ -876,6 +900,7 @@ void mips_gen(){
         ltp = 0;    //清空局部变量表
         fun = fun_table[i];
         fun_initialize(fun);
+        printf("\n%s",fun.name);
         print_local_table();
 
         for (j = fun.begin; j <= fun.end; j++) {

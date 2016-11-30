@@ -43,11 +43,12 @@ void nextch(){
 
     if(cp==ll){ //end of line
         eof_indicator = fgets(line,MAX_LINE_LENTH,fsrc);
-         if(eof_indicator==NULL){
-             printf("program incomplete");
-             exit(-1);
-         }
-        ll=strlen(line);
+        if(eof_indicator==NULL){
+            printf("program incomplete");
+            exit(-1);
+        }
+        printf("%s",line);
+        ll=(int)strlen(line);
         cp=0;
     }
     ch = line[cp];
@@ -60,11 +61,11 @@ void identifier(){
     do{
         ident[i] = ch;
         i=i+1;
-        printf("%c",ch);nextch();
+        nextch();
         if(i==MAX_ID_LENTH){
             while ((ch>='a' && ch <='z') || (ch>='A' && ch <='Z') ||
                    (ch=='_') || (ch>='0' && ch <='9')){
-                printf("%c",ch);nextch();
+                nextch();
             }
             break;
         }
@@ -105,10 +106,10 @@ void integer(){
     do{
         int_value = int_value * 10 + (ch - '0');
         i = i + 1;
-        printf("%c",ch);nextch();
+        nextch();
         if(i==MAX_INT_LENTH){
             while(ch>='0' && ch <='9'){
-                printf("%c",ch);nextch();
+                nextch();
             }
             break;
         }
@@ -132,7 +133,7 @@ void strings(){
     // string
     int i=0;
     do{
-        printf("%c",ch);nextch();
+        nextch();
         if(ch<32 || ch>126){  // illegal character
             error(0);
             continue;
@@ -148,19 +149,19 @@ void strings(){
     }
     string_value[i-1] = '\0';
     sym = stringsym;
-    printf("%c",ch);nextch();
+    nextch();
 }
 
 void character(){
     // character
-    printf("%c",ch);nextch();
+    nextch();
     if((ch>='a' && ch <='z') || (ch>='A' && ch <='Z') || (ch=='_') ||
             (ch>='0' && ch <='9') || ch=='+' || ch=='-' || ch=='*' || ch=='/') {
         ch_value = ch;
-        printf("%c",ch);nextch();
+        nextch();
         if (ch == '\'') {
             sym = charactersym;
-            printf("%c",ch);nextch();
+            nextch();
         } else {
             sym = nullsym;
             ch_value = 0;
@@ -173,10 +174,10 @@ void character(){
 
 void greater_than(){
     // gt or ge
-    printf("%c",ch);nextch();
+    nextch();
     if(ch=='='){
         sym = gesym;
-        printf("%c",ch);nextch();
+        nextch();
     }
     else{
         sym = gtsym;
@@ -185,10 +186,10 @@ void greater_than(){
 
 void less_than(){
     // lt or le
-    printf("%c",ch);nextch();
+    nextch();
     if(ch=='='){
         sym = lesym;
-        printf("%c",ch);nextch();
+        nextch();
     }
     else{
         sym = ltsym;
@@ -197,10 +198,10 @@ void less_than(){
 
 void not_equal(){
     // ne
-    printf("%c",ch);nextch();
+    nextch();
     if(ch=='='){
         sym = nesym;
-        printf("%c",ch);nextch();
+        nextch();
     }
     else{
         sym = nullsym;
@@ -209,10 +210,10 @@ void not_equal(){
 
 void equal(){
     // eq or '='
-    printf("%c",ch);nextch();
+    nextch();
     if(ch=='='){
         sym = eqsym;
-        printf("%c",ch);nextch();
+        nextch();
     }
     else{
         sym = '=';
@@ -221,7 +222,7 @@ void equal(){
 void nextsym(){
 
     while(ch==' ' || ch=='\t' || ch=='\n'){
-        if(ch!='\n')printf("%c",ch);nextch();   // skip white space
+        nextch();   // skip white space
     }
 
     if((ch>='a' && ch <='z') || (ch>='A' && ch <='Z') || (ch=='_')){
@@ -250,6 +251,6 @@ void nextsym(){
     }
     else {
         sym = ch;
-        printf("%c",ch);nextch();
+        nextch();
     }
 }

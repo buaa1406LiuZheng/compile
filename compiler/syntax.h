@@ -22,7 +22,7 @@ void scanf_state();
 void printf_state();
 void return_state();
 int condition(int branch_true);
-void expression(char *exp);
+int expression(char *exp);
 //void term();
 //void factor();
 //void new_temp();

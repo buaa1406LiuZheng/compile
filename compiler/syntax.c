@@ -130,7 +130,7 @@ void programme(){
         error(1);
     }
 
-    printf("\t#### this is a programme\n");
+
 }
 
 void const_def(int isglobal){
@@ -236,7 +236,7 @@ void const_def(int isglobal){
     }
     semicolon();
 
-    printf("\t#### this is a const define\n");
+
 }
 
 void var_def(int isglobal){
@@ -302,8 +302,7 @@ void var_def(int isglobal){
         }
     }while(sym == ',');
     semicolon();
-
-    printf("\t#### this is a variable define\n");
+    
 }
 
 void fun_def(){
@@ -358,6 +357,9 @@ void fun_def(){
 
             nextsym();
             block();
+            if(quad_codes[qp-1].op!=RETURN) {
+                enter_code(RETURN, "", "", "");
+            }
             end = qp - 1;
             if(sym == '}'){
                 nextsym();
@@ -373,7 +375,7 @@ void fun_def(){
     table[global_position].lenth = tp - global_position-1;
     fun_table[funp-1].begin = begin;
     fun_table[funp-1].end = end;
-    printf("\t#### this is a function define\n");
+
 }
 
 void block(){
@@ -389,7 +391,7 @@ void block(){
 
     multi_state();  //解析语句列
 
-    printf("\t#### this is a block\n");
+
 }
 
 void statement(){
@@ -464,7 +466,7 @@ void multi_state(){
     while(sym != '}'){
         statement();
     }
-    printf("\t#### this is a multi statements\n");
+
 }
 
 void if_state(){
@@ -506,7 +508,7 @@ void if_state(){
         strcpy(quad_codes[branchp].r,label);
     }
 
-    printf("\t#### this is a if statement\n");
+
 }
 
 void do_while_state(){
@@ -539,7 +541,7 @@ void do_while_state(){
         error(1);
     }
 
-    printf("\t#### this is a do-while statement\n");
+
 }
 
 void for_state(){
@@ -671,7 +673,7 @@ void for_state(){
         strcpy(quad_codes[branchp].r, label);    //循环条件判断失败时跳到这里
     }
 
-    printf("\t#### this is a for statement\n");
+
 }
 
 void semicolon(){
@@ -718,7 +720,7 @@ int call_state(char *id){
         error(1);
     }
     enter_code(CALL,"","",fun_name);
-    printf("\t#### this is a function call\n");
+
     return para_count;
 }
 
@@ -776,7 +778,7 @@ void assign_state(){
         error(1);
     }
 
-    printf("\t#### this is a assignment\n");
+
 }
 
 void scanf_state(){
@@ -841,7 +843,7 @@ void scanf_state(){
         error(1);
     }
 
-    printf("\t#### this is a scanf statement\n");
+
 }
 
 void printf_state(){
@@ -851,7 +853,7 @@ void printf_state(){
     char exp[MAX_ID_LENTH];
     char temp[MAX_ID_LENTH];
     int strpt;  //待打印字符串在字符串表的位置
-    int i;
+    int ischar;
 
     nextsym();
     if(sym == '('){
@@ -869,12 +871,11 @@ void printf_state(){
         nextsym();
         if(sym == ','){
             nextsym();
-            expression(exp);
-            i = find(exp);
-            if(i!=-1 && table[i].typ == CHAR){
-                enter_code(PRINTC,"","",exp);
+            ischar = expression(exp);
+            if (ischar) {   //刚读到一个字符
+                enter_code(PRINTC, "", "", exp);
             } else {
-                enter_code(PRINTI,"","",exp);
+                enter_code(PRINTI, "", "", exp);
             }
         }
         else if(sym == ')'){}
@@ -882,12 +883,11 @@ void printf_state(){
             error(1);
         }
     }else{   //标识符
-        expression(exp);
-        i = find(exp);
-        if(i!=-1 && table[i].typ == CHAR){
-            enter_code(PRINTC,"","",exp);
+        ischar = expression(exp);
+        if (ischar) {   //刚读到一个字符
+            enter_code(PRINTC, "", "", exp);
         } else {
-            enter_code(PRINTI,"","",exp);
+            enter_code(PRINTI, "", "", exp);
         }
     }
 
@@ -899,7 +899,7 @@ void printf_state(){
 
     enter_code(PRINTLN,"","","");
 
-    printf("\t#### this is a printf statement\n");
+
 }
 
 void return_state(){
@@ -930,7 +930,7 @@ void return_state(){
     } else {
         enter_code(RETURN, "", "", "");
     }
-    printf("\t#### this is a return statement\n");
+
 }
 
 int condition(int branch_true){
@@ -1008,11 +1008,11 @@ int condition(int branch_true){
         }
     }
 
-    printf("\t#### this is a condition\n");
+
     return qp-1;
 }
 
-void factor(char *fname){
+int factor(char *fname){
 /*入口为"/ *"后一个symbol
 出口为因子后面一个symbol*/
 
@@ -1022,6 +1022,7 @@ void factor(char *fname){
     int isneg = 0;
     int i,j;
     table_item item;
+    int ischar = 0;
 
     if(sym == identsym){
 
@@ -1034,10 +1035,13 @@ void factor(char *fname){
         }
 
         nextsym();
-        if(sym == '['){
+        if(sym == '['){ //数组
             if(i != -1){
                 if(!(item.ca == VAR && item.lenth!=0)){
                     error(2);   //不是数组变量
+                }
+                if(item.typ == CHAR){   //字符数组
+                    ischar = 1;
                 }
             }
             nextsym();
@@ -1051,10 +1055,13 @@ void factor(char *fname){
                 error(1);
             }
         }
-        else if(sym == '('){
+        else if(sym == '('){    //函数调用
             if(i != -1){
                 if(item.ca != FUNCTION || item.typ == VOID){
                     error(2);   //不是函数或无返回值
+                }
+                if(item.typ == CHAR){   //函数返回值为char
+                    ischar = 1;
                 }
             }
             j = call_state(id_name);
@@ -1066,7 +1073,7 @@ void factor(char *fname){
             enter_code(RETVAL,"","",tempval);
             strcpy(fname,tempval);
         }
-        else {
+        else {  //常量或变量
             if(i != -1){
                 if(!(item.ca == CONST || ((table[i].ca == VAR || table[i].ca == PARA) && item.lenth == 0))){
                     error(2);   //不是常量或非数组变量
@@ -1074,8 +1081,14 @@ void factor(char *fname){
             }
             if( i!= -1 && item.ca == CONST){    //如果为常数，直接赋值
                 sprintf(fname,"%d",item.value);
+                if(item.typ == CHAR){   //字符常量
+                    ischar = 1;
+                }
             } else{
                 strcpy(fname, id_name);
+                if(item.typ == CHAR){   //字符变量
+                    ischar = 1;
+                }
             }
 
         }
@@ -1104,12 +1117,13 @@ void factor(char *fname){
         nextsym();
     }
     else if(sym == charactersym){
+        ischar = 1;
         sprintf(fname,"%d",ch_value);
         nextsym();
     }
     else if(sym == '('){
         nextsym();
-        expression(temp);
+        ischar = expression(temp);
         if(sym == ')'){
             strcpy(fname,temp);
             nextsym();
@@ -1121,22 +1135,24 @@ void factor(char *fname){
         error(1);
     }
 
-    printf("\t#### this is a factor\n");
+
+    return ischar;
 }
 
-void term(char *tname){
+int term(char *tname){
 /*入口为"+-"后一个symbol
 出口为项后面一个symbol*/
 
     char current[MAX_ID_LENTH]; //处理到当前的变量
     char fname[MAX_ID_LENTH];   //一个因子
     quadop op;
-
-    factor(fname);
+    int ischar;
+    ischar = factor(fname);
     strcpy(current,fname);
 
     while(sym == '*' || sym == '/'){
 
+        ischar = 0;
         if(sym == '*'){
             op = MUL;
         } else{
@@ -1152,11 +1168,13 @@ void term(char *tname){
 
     }
 
-    printf("\t#### this is a term\n");
+
     strcpy(tname,current);
+
+    return ischar;
 }
 
-void expression(char *exp){
+int expression(char *exp){
 /*入口为一个表达式的第一个symbol
 出口为一个表达式后面一个symbol*/
 
@@ -1164,6 +1182,7 @@ void expression(char *exp){
     char tname[MAX_ID_LENTH];
     char current[MAX_ID_LENTH]; //处理到当前的变量
     quadop op;
+    int ischar;
 
     if(sym == '+' || sym == '-'){
         if(sym == '-'){
@@ -1172,8 +1191,9 @@ void expression(char *exp){
         nextsym();
     }
 
-    term(tname);
+    ischar = term(tname);
     if(isneg){
+        ischar = 0;
         new_tempval();
         enter_code(NEG,"",tname,tempval);
         strcpy(current,tempval);
@@ -1182,7 +1202,7 @@ void expression(char *exp){
     }
 
     while(sym == '+' || sym == '-'){
-
+        ischar = 0;
         if(sym == '+'){
             op = ADD;
         } else{
@@ -1196,6 +1216,8 @@ void expression(char *exp){
         enter_code(op,current,tname,tempval);
         strcpy(current,tempval);
     }
-    printf("\t#### this is a expression\n");
+
     strcpy(exp,current);
+
+    return ischar;
 }
