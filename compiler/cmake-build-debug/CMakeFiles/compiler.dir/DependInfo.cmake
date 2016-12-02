@@ -8,6 +8,7 @@ set(CMAKE_DEPENDS_CHECK_C
   "/Users/liuzheng/Public/ClionProjects/compiler/lexical.c" "/Users/liuzheng/Public/ClionProjects/compiler/cmake-build-debug/CMakeFiles/compiler.dir/lexical.c.o"
   "/Users/liuzheng/Public/ClionProjects/compiler/main.c" "/Users/liuzheng/Public/ClionProjects/compiler/cmake-build-debug/CMakeFiles/compiler.dir/main.c.o"
   "/Users/liuzheng/Public/ClionProjects/compiler/mips.c" "/Users/liuzheng/Public/ClionProjects/compiler/cmake-build-debug/CMakeFiles/compiler.dir/mips.c.o"
+  "/Users/liuzheng/Public/ClionProjects/compiler/optimize.c" "/Users/liuzheng/Public/ClionProjects/compiler/cmake-build-debug/CMakeFiles/compiler.dir/optimize.c.o"
   "/Users/liuzheng/Public/ClionProjects/compiler/syntax.c" "/Users/liuzheng/Public/ClionProjects/compiler/cmake-build-debug/CMakeFiles/compiler.dir/syntax.c.o"
   "/Users/liuzheng/Public/ClionProjects/compiler/table.c" "/Users/liuzheng/Public/ClionProjects/compiler/cmake-build-debug/CMakeFiles/compiler.dir/table.c.o"
   )

@@ -1,12 +1,10 @@
+int foo1(int a, int b){
+    return (a+b);
+}
+int foo2(int a){
+    return (a);
+}
+
 void main(){
-
-int d, e;
-
-    if(d<e)
-        if(d<=e)
-            if(d!=e)
-                if(2);
-        do
-            d=e;
-        while (d!=e)
+    printf(foo1(1,foo2(2)));
 }

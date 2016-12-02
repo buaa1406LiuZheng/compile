@@ -20,7 +20,12 @@ CMakeFiles/compiler.dir/mips.c.o: ../error.h
 CMakeFiles/compiler.dir/mips.c.o: ../lexical.h
 CMakeFiles/compiler.dir/mips.c.o: ../mips.c
 CMakeFiles/compiler.dir/mips.c.o: ../mips.h
+CMakeFiles/compiler.dir/mips.c.o: ../optimize.h
 CMakeFiles/compiler.dir/mips.c.o: ../table.h
+
+CMakeFiles/compiler.dir/optimize.c.o: ../lexical.h
+CMakeFiles/compiler.dir/optimize.c.o: ../optimize.c
+CMakeFiles/compiler.dir/optimize.c.o: ../table.h
 
 CMakeFiles/compiler.dir/syntax.c.o: ../error.h
 CMakeFiles/compiler.dir/syntax.c.o: ../lexical.h

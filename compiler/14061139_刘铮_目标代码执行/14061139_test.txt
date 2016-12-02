@@ -174,20 +174,11 @@ void for_test(int n){
     return;
 }
 
-void print_test(
-    int a, int b,
-    int c, int d,
-    char e, char f)
-{
+void print_scan_test(){
+    int a, b;
+    char c, d;
+    scanf(a,b,c,d);
     printf("the sum of a b c d is ",a+b+c+d);
-    printf("e: ",e);
-    printf("f: ",f);
-}
-void scan_test(){
-    int a, b, c, d;
-    char e, f;
-    scanf(a,b,c,d,e,f);
-    print_test(a,b,c,d,e,f);
     return;
 }
 
@@ -223,78 +214,23 @@ int recursion_test(int i){
         return (recursion_test(i-1)+i);
 }
 
-void cast_foo1(char c, int j){
-    int i;
-
-    i = c*c;
-    printf("char: ",i);
-    i = j*j;
-    printf("int: ",i);
-}
-void cast_foo2(int i1, int i2, int i3, int i4,
-    char c, int j){
-    int i;
-
-    i = c*c;
-    printf("char: ",i);
-    i = j*j;
-    printf("int: ",i);
-}
-void cast_test(){
-    char c;
-    int j;
-    int i;
-
-    c = 256;
-    j = 256;
-    i = c*c;
-    printf("char: ",i);
-    i = j*j;
-    printf("int: ",i);
-
-    cast_foo1(256,256);
-    cast_foo1(c,j);
-    cast_foo2(0,0,0,0,256,256);
-    cast_foo2(0,0,0,0,c,j);
-}
-
 void main(){
 
     int n;
-    int mode;
 
-    scanf(mode);
+    var_test();
 
-    if(mode==0){
-        var_test();
-        return;
-    }
-    else if(mode==1){
-        if_test();
-        return;
-    }
-    else if(mode==2){
-        do_while_test();
-        return;
-    }
-    else if(mode==3){
-        scanf(n);
-        for_test(n);
-        return;
-    }
-    else if(mode==4){
-        scan_test();
-        return;
-    }
-    else if(mode==5){
-        expression_test();
-        return;
-    }
-    else if(mode==6){
-        scanf(n);
-        printf(recursion_test(n));
-        return;
-    }
-    printf("wrong mode code");
+    if_test();
 
+    do_while_test();
+
+    scanf(n);
+    for_test(n);
+
+    print_scan_test();
+
+    expression_test();
+
+    scanf(n);
+    printf(recursion_test(n));
 }

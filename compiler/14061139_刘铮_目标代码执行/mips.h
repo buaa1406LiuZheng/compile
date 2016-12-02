@@ -10,9 +10,8 @@
 #define MAX_LOCAL_VAL 1024
 
 typedef struct {
-    char name[MAX_ID_LENTH];    //变量名
-    int position;   //变量地址
-    int is_in_reg;  //是否在寄存器中
+    char name[MAX_ID_LENTH];
+    int position;
 } local_val;
 
 void mips_gen();

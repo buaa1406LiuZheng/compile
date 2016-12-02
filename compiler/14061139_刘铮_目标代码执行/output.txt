@@ -1,4 +1,7 @@
 .data
+_aaa: .space 4
+_aaaaa: .space 40
+_A: .space 4
 
 .text
 j _main
@@ -17,7 +20,7 @@ lw $ra -52($sp)
 lw $fp -56($sp)
 jr $ra
 
-_foo1:
+_lastnum:
 sw $a3 -4($sp)
 sw $a2 -8($sp)
 sw $a1 -12($sp)
@@ -33,48 +36,51 @@ sw $s7 -48($sp)
 sw $ra -52($sp)
 sw $fp -56($sp)
 move $fp $sp
-addiu $sp $sp -60
+addiu $sp $sp -76
 
 lw $t0 -16($fp)
-lw $t1 -12($fp)
-add $t2 $t0 $t1
-sw $t2 -60($fp)
-lw $v0 -60($fp)
+bne $t0 1 $$0
+li $v0 1
 j $$return
-
-_foo2:
-sw $a3 -4($sp)
-sw $a2 -8($sp)
-sw $a1 -12($sp)
-sw $a0 -16($sp)
-sw $s0 -20($sp)
-sw $s1 -24($sp)
-sw $s2 -28($sp)
-sw $s3 -32($sp)
-sw $s4 -36($sp)
-sw $s5 -40($sp)
-sw $s6 -44($sp)
-sw $s7 -48($sp)
-sw $ra -52($sp)
-sw $fp -56($sp)
-move $fp $sp
-addiu $sp $sp -56
-
-lw $v0 -16($fp)
+$$0:
+lw $t0 -16($fp)
+bne $t0 2 $$1
+li $v0 1
+j $$return
+$$1:
+lw $t0 -16($fp)
+addi $t2 $t0 -1
+sw $t2 -60($fp)
+lw $t0 -60($fp)
+move $a0 $t0
+jal _lastnum
+sw $v0 -64($fp)
+lw $t0 -16($fp)
+addi $t2 $t0 -2
+sw $t2 -68($fp)
+lw $t0 -68($fp)
+move $a0 $t0
+jal _lastnum
+sw $v0 -72($fp)
+lw $t0 -64($fp)
+lw $t1 -72($fp)
+add $t2 $t0 $t1
+sw $t2 -76($fp)
+lw $v0 -76($fp)
 j $$return
 
 _main:
 move $fp $sp
-addiu $sp $sp -8
+addiu $sp $sp -12
 
-li $a0 2
-jal _foo2
-sw $v0 -4($fp)
-li $a0 1
+li $t0 6
+sw $t0 -4($fp)
 lw $t0 -4($fp)
-move $a1 $t0
-jal _foo1
-sw $v0 -8($fp)
+move $a0 $t0
+jal _lastnum
+sw $v0 -12($fp)
+lw $t0 -12($fp)
+sw $t0 -8($fp)
 li $v0 1
 lw $a0 -8($fp)
 syscall

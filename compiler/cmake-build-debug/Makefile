@@ -231,6 +231,33 @@ mips.c.s:
 	$(MAKE) -f CMakeFiles/compiler.dir/build.make CMakeFiles/compiler.dir/mips.c.s
 .PHONY : mips.c.s
 
+optimize.o: optimize.c.o
+
+.PHONY : optimize.o
+
+# target to build an object file
+optimize.c.o:
+	$(MAKE) -f CMakeFiles/compiler.dir/build.make CMakeFiles/compiler.dir/optimize.c.o
+.PHONY : optimize.c.o
+
+optimize.i: optimize.c.i
+
+.PHONY : optimize.i
+
+# target to preprocess a source file
+optimize.c.i:
+	$(MAKE) -f CMakeFiles/compiler.dir/build.make CMakeFiles/compiler.dir/optimize.c.i
+.PHONY : optimize.c.i
+
+optimize.s: optimize.c.s
+
+.PHONY : optimize.s
+
+# target to generate assembly for a file
+optimize.c.s:
+	$(MAKE) -f CMakeFiles/compiler.dir/build.make CMakeFiles/compiler.dir/optimize.c.s
+.PHONY : optimize.c.s
+
 syntax.o: syntax.c.o
 
 .PHONY : syntax.o
@@ -306,6 +333,9 @@ help:
 	@echo "... mips.o"
 	@echo "... mips.i"
 	@echo "... mips.s"
+	@echo "... optimize.o"
+	@echo "... optimize.i"
+	@echo "... optimize.s"
 	@echo "... syntax.o"
 	@echo "... syntax.i"
 	@echo "... syntax.s"

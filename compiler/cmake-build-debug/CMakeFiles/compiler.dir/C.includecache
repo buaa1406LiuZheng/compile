@@ -57,12 +57,20 @@ mips.h
 /Users/liuzheng/Public/ClionProjects/compiler/mips.h
 table.h
 /Users/liuzheng/Public/ClionProjects/compiler/table.h
+optimize.h
+/Users/liuzheng/Public/ClionProjects/compiler/optimize.h
 error.h
 /Users/liuzheng/Public/ClionProjects/compiler/error.h
 
 /Users/liuzheng/Public/ClionProjects/compiler/mips.h
 lexical.h
 /Users/liuzheng/Public/ClionProjects/compiler/lexical.h
+
+/Users/liuzheng/Public/ClionProjects/compiler/optimize.c
+table.h
+/Users/liuzheng/Public/ClionProjects/compiler/table.h
+
+/Users/liuzheng/Public/ClionProjects/compiler/optimize.h
 
 /Users/liuzheng/Public/ClionProjects/compiler/syntax.c
 stdio.h

@@ -21,6 +21,11 @@ CMakeFiles/compiler.dir/mips.c.o
  /Users/liuzheng/Public/ClionProjects/compiler/lexical.h
  /Users/liuzheng/Public/ClionProjects/compiler/mips.c
  /Users/liuzheng/Public/ClionProjects/compiler/mips.h
+ /Users/liuzheng/Public/ClionProjects/compiler/optimize.h
+ /Users/liuzheng/Public/ClionProjects/compiler/table.h
+CMakeFiles/compiler.dir/optimize.c.o
+ /Users/liuzheng/Public/ClionProjects/compiler/lexical.h
+ /Users/liuzheng/Public/ClionProjects/compiler/optimize.c
  /Users/liuzheng/Public/ClionProjects/compiler/table.h
 CMakeFiles/compiler.dir/syntax.c.o
  /Users/liuzheng/Public/ClionProjects/compiler/error.h

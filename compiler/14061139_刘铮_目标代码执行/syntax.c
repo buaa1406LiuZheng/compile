@@ -688,33 +688,30 @@ int call_state(char *id){
 /*入口为一个"("
 出口为";"*/
 
-    const int max_para = 127;
-
     char exp[MAX_ID_LENTH];
     char fun_name[MAX_ID_LENTH];
     char temp[MAX_ID_LENTH];
-    char para[max_para][MAX_ID_LENTH];
     int para_count = 0;
-    int i;
-
+//    nextsym();
+//    if(sym == ')'){}
+//    else{
+//        expression(exp);
+//        while (sym == ','){
+//            nextsym();
+//            expression(exp);
+//        }
+//    }
     strcpy(fun_name,id);
     do{
         nextsym();
         if(sym == ')'){}
         else{
             expression(exp);
-            if(para_count==max_para){   //参数个数过多
-                error(2);
-            } else {
-                strcpy(para[para_count++],exp);
-            }
+            sprintf(temp,"%d",para_count);
+            enter_code(PARAIN,temp,exp,fun_name);
+            para_count++;
         }
     }while(sym == ',');
-
-    for(i=0;i<para_count;i++){
-        sprintf(temp,"%d",i);
-        enter_code(PARAIN,temp,para[i],fun_name);
-    }
 
     if(sym == ')'){
         nextsym();

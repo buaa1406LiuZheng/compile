@@ -6,7 +6,6 @@
 #include <string.h>
 #include "mips.h"
 #include "table.h"
-#include "optimize.h"
 #include "error.h"
 
 extern quadruples quad_codes[MAX_CODES_LENTH];
@@ -26,14 +25,13 @@ int ltp;    //局部变量表头指针
 int offset; //局部变量在活动记录中相对基地址的偏移量
 fun_table_item fun; //正在被处理的函数
 
-void enter_local(char *id, int position, int is_in_reg){
+void enter_local(char *id, int position){
     local_val temp;
     if(ltp > MAX_LOCAL_VAL){
         fatal_error();
     } else{
         strcpy(temp.name,id);
         temp.position = position;
-        temp.is_in_reg = is_in_reg;
         local_table[ltp++] = temp;
     }
 }
@@ -55,7 +53,7 @@ int is_int(char *id){   //判断此标识符是否为立即数
     return 0;
 }
 
-int get_val(char *id, int *is_id_int, int *is_id_global, int *is_in_reg){
+int get_val(char *id, int *is_id_int, int *is_id_global){
 
     int id_value;
     int i;
@@ -70,7 +68,6 @@ int get_val(char *id, int *is_id_int, int *is_id_global, int *is_in_reg){
             id_value = 0;
         } else{
             *is_id_global = 0;
-            *is_in_reg = local_table[i].is_in_reg;
             id_value = local_table[i].position;
         }
     }
@@ -78,23 +75,17 @@ int get_val(char *id, int *is_id_int, int *is_id_global, int *is_in_reg){
     return id_value;
 }
 
-void load_val(char *id, int is_id_global, int id_value,
-              int is_id_inreg, char* reg){
+void load_val(char *id, int is_id_global, int id_value, char* reg){
     //将变量id放入reg代表的寄存器中，过程使用了$t9
-    if(is_id_global){   //此变量为全局变量
+    if(is_id_global){
         fprintf(fout,"la $t9 _%s\n",id);
         fprintf(fout,"lw %s 0($t9)\n",reg);
-    } else{ //局部变量或临时变量
-        if(is_id_inreg){
-            fprintf(fout,"move %s $s%d\n",reg, id_value-1);
-        } else{
-            fprintf(fout,"lw %s %d($fp)\n",reg, id_value);
-        }
+    } else{
+        fprintf(fout,"lw %s %d($fp)\n",reg, id_value);
     }
 }
 
-void store_val(char *id, int is_id_global, int id_value,
-               int is_id_inreg,char* reg){
+void store_val(char *id, int is_id_global, int id_value, char* reg){
     //将寄存器reg的内容存入id代表的内存中，过程中使用了$t9
 
     int i;
@@ -104,15 +95,11 @@ void store_val(char *id, int is_id_global, int id_value,
         fprintf(fout,"andi %s %s 0x000000FF\n",reg, reg);
     }
 
-    if(is_id_global){   //此变量为全局变量
+    if(is_id_global){
         fprintf(fout,"la $t9 _%s\n",id);
         fprintf(fout, "sw %s 0($t9)\n", reg);
-    } else{ //局部变量或临时变量
-        if(is_id_inreg){
-            fprintf(fout, "move $s%d %s\n", id_value-1 ,reg);
-        } else{
-            fprintf(fout, "sw %s %d($fp)\n", reg, id_value);
-        }
+    } else{
+        fprintf(fout, "sw %s %d($fp)\n", reg, id_value);
     }
 }
 
@@ -122,37 +109,36 @@ void add_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int, is_y_int, is_r_int;
     int is_x_global = 0, is_y_global = 0, is_r_global = 0;
-    int is_x_inreg,is_y_inreg,is_r_inreg;
     int x_value, y_value, r_value;
 
     strcpy(x,quad.x);
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
+    y_value = get_val(y, &is_y_int, &is_y_global);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     //载入x, y 并将x+y结果存入$t2
     if(is_x_int && is_y_int){   //都是立即数
         fprintf(fout,"li $t2 %d\n", x_value+y_value);
     } else{
         if(is_x_int){   //x是立即数
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(y,is_y_global,y_value,"$t1");
 
             fprintf(fout,"addi $t2 $t1 %d\n",x_value);
         } else if(is_y_int){    //y是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+            load_val(x,is_x_global,x_value,"$t0");
 
             fprintf(fout,"addi $t2 $t0 %d\n",y_value);
         } else{ //都不是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(x,is_x_global,x_value,"$t0");
+            load_val(y,is_y_global,y_value,"$t1");
             fprintf(fout,"add $t2 $t0 $t1\n");
         }
     }
 
-    store_val(r,is_r_global,r_value,is_r_inreg,"$t2");
+    store_val(r, is_r_global, r_value, "$t2");
 }
 
 void sub_gen(quadruples quad){
@@ -161,16 +147,15 @@ void sub_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int, is_y_int, is_r_int;
     int is_x_global = 0, is_y_global = 0, is_r_global = 0;
-    int is_x_inreg,is_y_inreg,is_r_inreg;
     int x_value, y_value, r_value;
 
     strcpy(x,quad.x);
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
+    y_value = get_val(y, &is_y_int, &is_y_global);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     //载入x, y 并将x-y结果存入$t2
     if(is_x_int && is_y_int){   //都是立即数
@@ -178,21 +163,21 @@ void sub_gen(quadruples quad){
     } else{
         if(is_x_int){   //x是立即数
             fprintf(fout,"li $t0 %d\n",x_value);
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(y,is_y_global,y_value,"$t1");
 
             fprintf(fout,"sub $t2 $t0 $t1\n");
         } else if(is_y_int){    //y是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+            load_val(x,is_x_global,x_value,"$t0");
 
             fprintf(fout,"addi $t2 $t0 %d\n",-y_value);
         } else{ //都不是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(x,is_x_global,x_value,"$t0");
+            load_val(y,is_y_global,y_value,"$t1");
             fprintf(fout,"sub $t2 $t0 $t1\n");
         }
     }
 
-    store_val(r,is_r_global,r_value,is_r_inreg,"$t2");
+    store_val(r, is_r_global, r_value, "$t2");
 }
 
 void mul_gen(quadruples quad){
@@ -201,37 +186,36 @@ void mul_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int, is_y_int, is_r_int;
     int is_x_global = 0, is_y_global = 0, is_r_global = 0;
-    int is_x_inreg,is_y_inreg,is_r_inreg;
     int x_value, y_value, r_value;
 
     strcpy(x,quad.x);
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
+    y_value = get_val(y, &is_y_int, &is_y_global);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     //载入x, y 并将x*y结果存入$t2
     if(is_x_int && is_y_int){   //都是立即数
         fprintf(fout,"li $t2 %d\n", x_value*y_value);
     } else{
         if(is_x_int){   //x是立即数
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(y,is_y_global,y_value,"$t1");
 
             fprintf(fout,"mul $t2 $t1 %d\n",x_value);
         } else if(is_y_int){    //y是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+            load_val(x,is_x_global,x_value,"$t0");
 
             fprintf(fout,"mul $t2 $t0 %d\n",y_value);
         } else{ //都不是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(x,is_x_global,x_value,"$t0");
+            load_val(y,is_y_global,y_value,"$t1");
             fprintf(fout,"mul $t2 $t0 $t1\n");
         }
     }
 
-    store_val(r,is_r_global,r_value,is_r_inreg,"$t2");
+    store_val(r, is_r_global, r_value, "$t2");
 }
 
 void div_gen(quadruples quad){
@@ -240,16 +224,15 @@ void div_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int, is_y_int, is_r_int;
     int is_x_global = 0, is_y_global = 0, is_r_global = 0;
-    int is_x_inreg,is_y_inreg,is_r_inreg;
     int x_value, y_value, r_value;
 
     strcpy(x,quad.x);
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
+    y_value = get_val(y, &is_y_int, &is_y_global);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     //载入x, y 并将x/y结果存入$t2
     if(is_x_int && is_y_int){   //都是立即数
@@ -257,21 +240,21 @@ void div_gen(quadruples quad){
     } else{
         if(is_x_int){   //x是立即数
             fprintf(fout,"li $t0 %d\n",x_value);
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(y,is_y_global,y_value,"$t1");
 
             fprintf(fout,"div $t2 $t0 $t1\n");
         } else if(is_y_int){    //y是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+            load_val(x,is_x_global,x_value,"$t0");
 
             fprintf(fout,"div $t2 $t0 %d\n",y_value);
         } else{ //都不是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(x,is_x_global,x_value,"$t0");
+            load_val(y,is_y_global,y_value,"$t1");
             fprintf(fout,"div $t2 $t0 $t1\n");
         }
     }
 
-    store_val(r,is_r_global,r_value,is_r_inreg,"$t2");
+    store_val(r, is_r_global, r_value, "$t2");
 }
 
 void beq_gen(quadruples quad){
@@ -280,15 +263,14 @@ void beq_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int, is_y_int;
     int is_x_global = 0, is_y_global = 0;
-    int is_x_inreg,is_y_inreg;
     int x_value, y_value;
 
     strcpy(x,quad.x);
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
+    y_value = get_val(y, &is_y_int, &is_y_global);
 
     //载入x, y 并将x*y结果存入$t2
     if(is_x_int && is_y_int){   //都是立即数
@@ -297,16 +279,16 @@ void beq_gen(quadruples quad){
         }
     } else{
         if(is_x_int){   //x是立即数
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(y,is_y_global,y_value,"$t1");
 
             fprintf(fout,"beq $t1 %d %s\n",x_value, r);
         } else if(is_y_int){    //y是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+            load_val(x,is_x_global,x_value,"$t0");
 
             fprintf(fout,"beq $t0 %d %s\n",y_value, r);
         } else{ //都不是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(x,is_x_global,x_value,"$t0");
+            load_val(y,is_y_global,y_value,"$t1");
             fprintf(fout,"beq $t1 $t0 %s\n",r);
         }
     }
@@ -319,15 +301,14 @@ void bne_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int, is_y_int;
     int is_x_global = 0, is_y_global = 0;
-    int is_x_inreg,is_y_inreg;
     int x_value, y_value;
 
     strcpy(x,quad.x);
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
+    y_value = get_val(y, &is_y_int, &is_y_global);
 
     //载入x, y 并将x*y结果存入$t2
     if(is_x_int && is_y_int){   //都是立即数
@@ -336,16 +317,16 @@ void bne_gen(quadruples quad){
         }
     } else{
         if(is_x_int){   //x是立即数
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(y,is_y_global,y_value,"$t1");
 
             fprintf(fout,"bne $t1 %d %s\n",x_value, r);
         } else if(is_y_int){    //y是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+            load_val(x,is_x_global,x_value,"$t0");
 
             fprintf(fout,"bne $t0 %d %s\n",y_value, r);
         } else{ //都不是立即数
-            load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t1");
+            load_val(x,is_x_global,x_value,"$t0");
+            load_val(y,is_y_global,y_value,"$t1");
             fprintf(fout,"bne $t1 $t0 %s\n",r);
         }
     }
@@ -357,13 +338,12 @@ void bge_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int;
     int is_x_global = 0;
-    int is_x_inreg;
     int x_value;
 
     strcpy(x,quad.x);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
 
     //载入x, y 并将x*y结果存入$t2
     if(is_x_int){   //都是立即数
@@ -371,7 +351,7 @@ void bge_gen(quadruples quad){
             fprintf(fout,"j %s\n", r);
         }
     } else{
-        load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+        load_val(x,is_x_global,x_value,"$t0");
         fprintf(fout,"bgez $t0 %s\n",r);
     }
 
@@ -382,13 +362,12 @@ void bgt_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int;
     int is_x_global = 0;
-    int is_x_inreg;
     int x_value;
 
     strcpy(x,quad.x);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
 
     //载入x, y 并将x*y结果存入$t2
     if(is_x_int){   //都是立即数
@@ -396,7 +375,7 @@ void bgt_gen(quadruples quad){
             fprintf(fout,"j %s\n", r);
         }
     } else{
-        load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+        load_val(x,is_x_global,x_value,"$t0");
         fprintf(fout,"bgtz $t0 %s\n",r);
     }
 
@@ -407,13 +386,12 @@ void ble_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int;
     int is_x_global = 0;
-    int is_x_inreg;
     int x_value;
 
     strcpy(x,quad.x);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
 
     //载入x, y 并将x*y结果存入$t2
     if(is_x_int){   //都是立即数
@@ -421,7 +399,7 @@ void ble_gen(quadruples quad){
             fprintf(fout,"j %s\n", r);
         }
     } else{
-        load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+        load_val(x,is_x_global,x_value,"$t0");
         fprintf(fout,"blez $t0 %s\n",r);
     }
 
@@ -432,13 +410,12 @@ void blt_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_x_int;
     int is_x_global = 0;
-    int is_x_inreg;
     int x_value;
 
     strcpy(x,quad.x);
     strcpy(r,quad.r);
 
-    x_value = get_val(x, &is_x_int, &is_x_global, &is_x_inreg);
+    x_value = get_val(x, &is_x_int, &is_x_global);
 
     //载入x, y 并将x*y结果存入$t2
     if(is_x_int){   //都是立即数
@@ -446,7 +423,7 @@ void blt_gen(quadruples quad){
             fprintf(fout,"j %s\n", r);
         }
     } else{
-        load_val(x,is_x_global,x_value,is_x_inreg,"$t0");
+        load_val(x,is_x_global,x_value,"$t0");
         fprintf(fout,"bltz $t0 %s\n",r);
     }
 
@@ -470,7 +447,6 @@ void rar_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_y_int, is_r_int;
     int is_y_global = 0, is_r_global = 0;
-    int is_y_inreg,is_r_inreg;
     int y_value, r_value;
     int i, x_position;
 
@@ -478,8 +454,8 @@ void rar_gen(quadruples quad){
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    y_value = get_val(y, &is_y_int, &is_y_global);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     i = find_local(x);
     if(i!=-1) {
@@ -488,7 +464,7 @@ void rar_gen(quadruples quad){
         if(is_y_int){   //y是立即数
             fprintf(fout,"lw $t1 %d($fp)\n",-y_value*4+x_position);
         } else{ //将x[y]地址放在$t0
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t0");
+            load_val(y,is_y_global,y_value,"$t0");
             fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
             fprintf(fout,"sub $t0 $fp $t0\n");
             fprintf(fout,"lw $t1 %d($t0)\n",x_position);
@@ -499,14 +475,14 @@ void rar_gen(quadruples quad){
         if(is_y_int){   //y是立即数
             fprintf(fout,"lw $t1 %d($t2)\n",y_value*4);
         } else{
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t0");
+            load_val(y,is_y_global,y_value,"$t0");
             fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
             fprintf(fout,"add $t2 $t2 $t0\n");
             fprintf(fout,"lw $t1 0($t2)\n");
         }
     }
 
-    store_val(r,is_r_global,r_value,is_r_inreg,"$t1");
+    store_val(r, is_r_global, r_value, "$t1");
 
 }
 
@@ -516,7 +492,6 @@ void war_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_y_int, is_r_int;
     int is_y_global = 0, is_r_global = 0;
-    int is_y_inreg,is_r_inreg;
     int y_value, r_value;
     int i, x_position;
 
@@ -524,14 +499,14 @@ void war_gen(quadruples quad){
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    y_value = get_val(y, &is_y_int, &is_y_global);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     //将r的值存在$t1
     if(is_r_int){   //r是常数
         fprintf(fout,"li $t1 %d\n",r_value);
     } else{
-        load_val(r,is_r_global,r_value,is_r_inreg,"$t1");
+        load_val(r,is_r_global,r_value,"$t1");
     }
 
     i = find_local(x);
@@ -541,7 +516,7 @@ void war_gen(quadruples quad){
         if(is_y_int){   //y是立即数
             fprintf(fout,"sw $t1 %d($fp)\n",-y_value*4+x_position);
         } else{ //将x[y]地址放在$t0
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t0");
+            load_val(y,is_y_global,y_value,"$t0");
             fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
             fprintf(fout,"sub $t0 $fp $t0\n");
             fprintf(fout,"sw $t1 %d($t0)\n",x_position);
@@ -552,7 +527,7 @@ void war_gen(quadruples quad){
         if(is_y_int){   //y是立即数
             fprintf(fout,"sw $t1 %d($t2)\n",y_value*4);
         } else{
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t0");
+            load_val(y,is_y_global,y_value,"$t0");
             fprintf(fout,"sll $t0 $t0 2\n");    //y = y*4
             fprintf(fout,"add $t2 $t2 $t0\n");
             fprintf(fout,"sw $t1 0($t2)\n");
@@ -566,23 +541,22 @@ void mov_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_y_int, is_r_int;
     int is_y_global = 0, is_r_global = 0;
-    int is_y_inreg,is_r_inreg;
     int y_value, r_value;
 
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    y_value = get_val(y, &is_y_int, &is_y_global);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     //将y的值放到$t0
     if(is_y_int){   //y是立即数
         fprintf(fout,"li $t0 %d\n",y_value);
     } else{
-        load_val(y,is_y_global,y_value,is_y_inreg,"$t0");
+        load_val(y,is_y_global,y_value,"$t0");
     }
 
-    store_val(r,is_r_global,r_value,is_r_inreg,"$t0");
+    store_val(r, is_r_global, r_value, "$t0");
 }
 
 void neg_gen(quadruples quad){
@@ -590,36 +564,34 @@ void neg_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_y_int, is_r_int;
     int is_y_global = 0, is_r_global = 0;
-    int is_y_inreg,is_r_inreg;
     int y_value, r_value;
 
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    y_value = get_val(y, &is_y_int, &is_y_global);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     //将-y的值放到$t0
     if(is_y_int){   //y是立即数
         fprintf(fout,"li $t0 %d\n",-y_value);
     } else{
-        load_val(y,is_y_global,y_value,is_y_inreg,"$t0");
+        load_val(y,is_y_global,y_value,"$t0");
         fprintf(fout,"neg $t0 $t0\n");
     }
 
-    store_val(r,is_r_global,r_value,is_r_inreg,"$t0");
+    store_val(r, is_r_global, r_value, "$t0");
 }
 
 void print_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_r_int;
     int is_r_global = 0;
-    int is_r_inreg;
     int r_value;
 
     strcpy(r,quad.r);
 
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     if(quad.op == PRINTI){   //写整数
         fprintf(fout,"li $v0 1\n");
@@ -635,7 +607,7 @@ void print_gen(quadruples quad){
         if(is_r_int){   //r为立即数
             fprintf(fout,"li $a0 %d\n",r_value);
         } else{
-            load_val(r,is_r_global,r_value,is_r_inreg,"$a0");
+            load_val(r,is_r_global,r_value,"$a0");
         }
     }
     else if(quad.op == PRINTS){ //写字符串
@@ -643,7 +615,7 @@ void print_gen(quadruples quad){
         if(is_r_int){   //r为立即数
             fprintf(fout,"addi $a0 $a0 %d\n",r_value);
         } else{
-            load_val(r,is_r_global,r_value,is_r_inreg,"$t0");
+            load_val(r,is_r_global,r_value,"$t0");
             fprintf(fout,"addi $a0 $a0 $t0\n");
         }
     }
@@ -659,12 +631,11 @@ void scan_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_r_int;
     int is_r_global = 0;
-    int is_r_inreg;
     int r_value;
 
     strcpy(r,quad.r);
 
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
     if(quad.op == SCANI){   //读整数
         fprintf(fout,"li $v0 5\n");
@@ -673,7 +644,7 @@ void scan_gen(quadruples quad){
     }
     fprintf(fout,"syscall\n");
 
-    store_val(r,is_r_global,r_value,is_r_inreg,"$v0");
+    store_val(r, is_r_global, r_value, "$v0");
 
 }
 
@@ -683,12 +654,10 @@ void para_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_y_int;
     int is_y_global = 0;
-    int is_y_inreg;
     int y_value;
-
     int para_ord;   //是第几个参数
     int para_num;   //函数参数个数
-    type para_typ;  //参数的类型
+    type para_typ = NONETYPE;  //参数的类型
     int tabp;   //函数在符号表中的位置
     int funtabp;    //函数在函数表中的位置
 
@@ -696,7 +665,7 @@ void para_gen(quadruples quad){
     strcpy(y,quad.y);
     strcpy(r,quad.r);
 
-    y_value = get_val(y, &is_y_int, &is_y_global, &is_y_inreg);
+    y_value = get_val(y, &is_y_int, &is_y_global);
 
     tabp = find_global(r);
     funtabp = table[tabp].value;
@@ -711,7 +680,7 @@ void para_gen(quadruples quad){
             }
             fprintf(fout,"li $a%d %d\n",para_ord,y_value);
         } else{
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t0");
+            load_val(y,is_y_global,y_value,"$t0");
             fprintf(fout,"move $a%d $t0\n",para_ord);
             if(para_typ == CHAR){  //如果是CHAR类型需要转换
                 fprintf(fout,"andi $a%d $a%d 0x000000FF\n",para_ord, para_ord);
@@ -722,7 +691,7 @@ void para_gen(quadruples quad){
         if(is_y_int){   //y是立即数
             fprintf(fout,"li $t0 %d\n",y_value);
         } else{
-            load_val(y,is_y_global,y_value,is_y_inreg,"$t0");
+            load_val(y,is_y_global,y_value,"$t0");
         }
         if(para_typ == CHAR){  //如果是CHAR类型需要转换
             fprintf(fout,"andi $t0 $t0 0x000000FF\n");
@@ -757,18 +726,17 @@ void return_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_r_int;
     int is_r_global = 0;
-    int is_r_inreg;
     int r_value;
 
     strcpy(r,quad.r);
 
     //存返回值
     if(r[0]!='\0') {
-        r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+        r_value = get_val(r, &is_r_int, &is_r_global);
         if(is_r_int){
             fprintf(fout,"li $v0 %d\n",r_value);
         } else{
-            load_val(r,is_r_global,r_value,is_r_inreg,"$v0");
+            load_val(r,is_r_global,r_value,"$v0");
         }
     }
 
@@ -787,14 +755,13 @@ void retval_gen(quadruples quad){
     char r[MAX_ID_LENTH];
     int is_r_int;
     int is_r_global = 0;
-    int is_r_inreg;
     int r_value;
 
     strcpy(r,quad.r);
 
-    r_value = get_val(r, &is_r_int, &is_r_global, &is_r_inreg);
+    r_value = get_val(r, &is_r_int, &is_r_global);
 
-    store_val(r,is_r_global,r_value,is_r_inreg,"$v0");
+    store_val(r, is_r_global, r_value, "$v0");
 
 }
 
@@ -851,39 +818,28 @@ void initialize(){
 void localtab_initialize(){
     //初始化局部变量表
 
-    const int fisrt_para_offset = -16;
-
     int i,j;
     int para_offset;    //参数的偏移
     int tempval_begin;  //临时变量在局部变量表中的起始地址
     quadruples temp_code;
 
     offset = offset - 4;
-    para_offset = fisrt_para_offset;  //第一个参数偏移为-16
-
-    sreg_alloc(global_position);
-
+    para_offset = -16;  //第一个参数偏移为-16
     //先初始化参数和局部变量的地址
     for(i = global_position+1; table[i].ca!=FUNCTION && i<tp;i++){
         if(table[i].ca == PARA){
             //分配参数的位置
-            enter_local(table[i].name,para_offset,0);
+            enter_local(table[i].name,para_offset);
             para_offset = para_offset+4;
         }
-        else if(table[i].ca == CONST){  //局部常量
+        else if(table[i].ca == CONST){
             continue;
         }
-        else{   //局部变量
-            if(table[i].value>0){   //已分配全局寄存器
-                enter_local(table[i].name,table[i].value,1);
-                continue;
-            }
-
+        else{
+            enter_local(table[i].name,offset);
             if(table[i].lenth == 0){
-                enter_local(table[i].name,offset,0);
                 offset -= 4;
             } else{
-                enter_local(table[i].name,offset,0);
                 offset -= table[i].lenth*4;
             }
         }
@@ -892,36 +848,36 @@ void localtab_initialize(){
     //在初始化临时变量的地址
     for(i = fun.begin;i<=fun.end;i++){
         temp_code = quad_codes[i];
-        if(temp_code.r[0]=='#'){    //操作数r
+        if(temp_code.r[0]=='#'){
             for(j = tempval_begin;j<ltp;j++){
                 if(strcmp(temp_code.r, local_table[j].name) == 0){
                     break;
                 }
             }
             if(j == ltp){
-                enter_local(temp_code.r,offset,0);
+                enter_local(temp_code.r,offset);
                 offset -= 4;
             }
         }
-        if(temp_code.x[0]=='#'){    //操作数x
+        if(temp_code.x[0]=='#'){
             for(j = tempval_begin;j<ltp;j++){
                 if(strcmp(temp_code.x, local_table[j].name) == 0){
                     break;
                 }
             }
             if(j == ltp){
-                enter_local(temp_code.x,offset,0);
+                enter_local(temp_code.x,offset);
                 offset -= 4;
             }
         }
-        if(temp_code.y[0]=='#'){    //操作数y
+        if(temp_code.y[0]=='#'){
             for(j = tempval_begin;j<ltp;j++){
                 if(strcmp(temp_code.y, local_table[j].name) == 0){
                     break;
                 }
             }
             if(j == ltp){
-                enter_local(temp_code.y,offset,0);
+                enter_local(temp_code.y,offset);
                 offset -= 4;
             }
         }
@@ -1087,10 +1043,10 @@ void print_local_table(){
     int i;
     local_val t;
 
-    printf("\n%-15s\t%-10s\tisinreg\n","name","position");
+    printf("\n%-15s\t%-5s\n","name","position");
     for(i=0;i<ltp;i++){
         t = local_table[i];
-        printf("%-15s\t%-10d\t%d\n",
-               t.name,t.position,t.is_in_reg);
+        printf("%-15s\t%-5d\n",
+               t.name,t.position);
     }
 }

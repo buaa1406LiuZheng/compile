@@ -5,6 +5,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/compiler.dir/syntax.c.o"
   "CMakeFiles/compiler.dir/table.c.o"
   "CMakeFiles/compiler.dir/mips.c.o"
+  "CMakeFiles/compiler.dir/optimize.c.o"
   "compiler.pdb"
   "compiler"
 )

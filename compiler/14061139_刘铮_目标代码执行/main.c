@@ -26,12 +26,22 @@ char string_table[MAX_STRING_CONST_STORAGE_LENTH];  //字符串常量表
 fun_table_item fun_table[MAX_FUN_TABLE_LENTH];
 
 int tp = 0; //符号表头指针
-int global_position = 0;    //最后一个全局变量在符号表中的位置
+//最后一个全局变量在符号表中的位置，如果到了函数定义部分，则是函数在符号表中位置
+int global_position = 0;
 int qp = 0; //四元式表头指针
 int strp = 0;   //字符串常量表头指针
 int funp = 0;   //函数表头指针
 
 int error_count = 0;
+
+//const char symbol_name[24][40] = {
+//        "charsym","constsym","dosym",
+//        "elsesym","forsym","ifsym","intsym",
+//        "mainsym","printfsym","returnsym",
+//        "scanfsym","voidsym","whilesym",
+//        "ltsym","lesym","gtsym","gesym",
+//        "nesym","eqsym","identsym","charactersym",
+//        "zerosym","integersym","stringsym"};
 
 int main(int argc, char** argv){
 
@@ -47,17 +57,16 @@ int main(int argc, char** argv){
     }
 
     programme();
-
+    print_table();
     print_code_table();
     print_fun_table();
-    print_table();
     if(error_count > 0){
         printf("programme has errors");
         return 1;
     }
     mips_gen();
-    printf("misp code generation done\n");
 
+    printf("misp code generation done\n");
     fclose(fsrc);
     fclose(fout);
     return 0;
