@@ -11,6 +11,7 @@ FILE *fout;
 
 symbol sym=nullsym; // current read symbol
 
+//词法分析
 char line[MAX_LINE_LENTH]; // buffer for a line of code
 int ll=0; // length of current line
 int cp=0; // current character pointer
@@ -22,6 +23,7 @@ char ch_value = 0;   // value of a character constant
 char string_value[MAX_STRING_LENTH];    // value of a string constant
 type type_value;
 
+//语法分析
 table_item table[MAX_TABLE_LENTH];  //符号表
 std::list<quadruples> quad_codes;  //四元式代码表
 char string_table[MAX_STRING_CONST_STORAGE_LENTH];  //字符串常量表
@@ -32,7 +34,11 @@ int global_position = 0;    //最后一个全局变量在符号表中的位置
 int strp = 0;   //字符串常量表头指针
 int funp = 0;   //函数表头指针
 
+//错误处理
 int error_count = 0;
+
+//优化和代码生成
+fun_table_item fun;
 
 int main(int argc, char** argv){
 
@@ -52,6 +58,10 @@ int main(int argc, char** argv){
         printf("programme has errors");
         return 0;
     }
+
+    print_code_table();
+    print_fun_table();
+
     mips_gen();
     printf("misp code generation done\n");
 

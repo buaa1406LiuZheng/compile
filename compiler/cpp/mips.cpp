@@ -23,7 +23,7 @@ extern FILE *fout;
 local_val local_table[MAX_LOCAL_VAL];   //局部变量表，存储局部变量以及其在栈的位置
 int ltp;    //局部变量表头指针
 int offset; //局部变量在活动记录中相对基地址的偏移量
-fun_table_item fun; //正在被处理的函数
+extern fun_table_item fun; //正在被处理的函数
 
 void enter_local(char *id, int position, int is_in_reg){
     local_val temp;
@@ -987,7 +987,8 @@ void mips_gen(){
 //        printf("\n%s",fun.name);
 //        print_local_table();
 
-        for (j = fun.begin; j != fun.end; j++) {
+        j = fun.begin;
+        while(true){
             quad = *j;
             switch (quad.op) {
                 case NONEOP: {
@@ -1086,6 +1087,10 @@ void mips_gen(){
                     break;
                 }
             }
+            if(j==fun.end){
+                break;
+            }
+            j++;
         }
 
     }
