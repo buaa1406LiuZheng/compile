@@ -2,9 +2,6 @@
 // Created by liuzheng on 2016/11/14.
 //
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "lexical.h"
 #include "error.h"
 
 extern symbol sym;
@@ -80,23 +77,16 @@ void fatal_error(){
     exit(0);
 }
 
-void skip(symbol *symbolset){
+void skip(std::set<symbol> skipset){
 
-    char symbol_set[SYMBOL_NUM] = {0};
-    symbol skip_sym;
-    int i;
+    std::set<symbol>::iterator cmp;
 
-    if(symbolset == NULL){
-        return;
-    }
-
-    for(i=0;symbolset[i]!=nullsym;i++){
-        skip_sym = symbolset[i];
-        symbol_set[skip_sym] = 1;
-    }
-
-    while(!symbol_set[sym]){
+    do{
+        cmp = skipset.find(sym);
+        if(cmp!=skipset.end()){ //sym在skipset中
+            break;
+        }
         nextsym();
-    }
+    }while(true);
 
 }

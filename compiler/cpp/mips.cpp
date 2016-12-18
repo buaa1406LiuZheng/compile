@@ -9,7 +9,7 @@
 #include "optimize.h"
 #include "error.h"
 
-extern quadruples quad_codes[MAX_CODES_LENTH];
+extern std::list<quadruples> quad_codes;    //四元式链表
 extern fun_table_item fun_table[MAX_FUN_TABLE_LENTH];
 extern table_item table[MAX_TABLE_LENTH];  //符号表
 extern char string_table[MAX_STRING_CONST_STORAGE_LENTH];  //字符串常量表
@@ -18,7 +18,6 @@ extern int funp;    //函数表头指针
 extern int tp;  //符号表头指针
 extern int strp;   //字符串常量表头指针
 
-extern int qp;
 extern FILE *fout;
 
 local_val local_table[MAX_LOCAL_VAL];   //局部变量表，存储局部变量以及其在栈的位置
@@ -867,6 +866,7 @@ void localtab_initialize(){
     int para_offset;    //参数的偏移
     int tempval_begin;  //临时变量在局部变量表中的起始地址
     quadruples temp_code;
+    std::list<quadruples>::iterator k;
 
     offset = offset - 4;
     para_offset = fisrt_para_offset;  //第一个参数偏移为-16
@@ -900,8 +900,8 @@ void localtab_initialize(){
     }
     tempval_begin = ltp;
     //在初始化临时变量的地址
-    for(i = fun.begin;i<=fun.end;i++){
-        temp_code = quad_codes[i];
+    for(k = fun.begin;k!=fun.end;k++){
+        temp_code = *k;
         if(temp_code.r[0]=='#'){    //操作数r
             for(j = tempval_begin;j<ltp;j++){
                 if(strcmp(temp_code.r, local_table[j].name) == 0){
@@ -965,7 +965,8 @@ void fun_initialize(){
 }
 
 void mips_gen(){
-    int i,j;
+    int i;
+    std::list<quadruples>::iterator j;
     quadruples quad;
 
     initialize();
@@ -986,8 +987,8 @@ void mips_gen(){
 //        printf("\n%s",fun.name);
 //        print_local_table();
 
-        for (j = fun.begin; j <= fun.end; j++) {
-            quad = quad_codes[j];
+        for (j = fun.begin; j != fun.end; j++) {
+            quad = *j;
             switch (quad.op) {
                 case NONEOP: {
                     break;

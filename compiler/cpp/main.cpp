@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <list>
 #include "lexical.h"
 #include "syntax.h"
 #include "table.h"
@@ -22,13 +23,12 @@ char string_value[MAX_STRING_LENTH];    // value of a string constant
 type type_value;
 
 table_item table[MAX_TABLE_LENTH];  //符号表
-quadruples quad_codes[MAX_CODES_LENTH];  //四元式代码表
+std::list<quadruples> quad_codes;  //四元式代码表
 char string_table[MAX_STRING_CONST_STORAGE_LENTH];  //字符串常量表
 fun_table_item fun_table[MAX_FUN_TABLE_LENTH];
 
 int tp = 0; //符号表头指针
 int global_position = 0;    //最后一个全局变量在符号表中的位置
-int qp = 0; //四元式表头指针
 int strp = 0;   //字符串常量表头指针
 int funp = 0;   //函数表头指针
 
@@ -36,20 +36,14 @@ int error_count = 0;
 
 int main(int argc, char** argv){
 
-    char path[200];
-
-    printf("input:\n");
-    scanf("%s",path);
-    fsrc = fopen(path,"r");
+    fsrc = fopen(argv[1],"r");
     if(fsrc==NULL){
-        printf("%s not exsit\n",path);
+        printf("%s not exsit\n",argv[1]);
         exit(-1);
     }
-    printf("output:\n");
-    scanf("%s",path);
-    fout = fopen(path,"w");
+    fout = fopen(argv[2],"w");
     if(fout==NULL){
-        printf("%s open failed\n",path);
+        printf("%s open failed\n",argv[2]);
         exit(-1);
     }
 
@@ -60,7 +54,6 @@ int main(int argc, char** argv){
     }
     mips_gen();
     printf("misp code generation done\n");
-
 
     fclose(fsrc);
     fclose(fout);

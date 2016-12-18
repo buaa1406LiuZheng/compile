@@ -11,9 +11,13 @@
 #define MAX_LINE_LENTH 201
 
 #define RESERVED_WORDS_NUM 13
-#define SYMBOL_NUM (24+256)
+
 typedef enum {
-    nullsym,charsym=256,constsym,dosym,
+    nullsym,semisym=';',commasym=',',
+    lparensym='(',rparensym=')',lbracketsym='[',rbracketsym=']',
+    lbracesym='{',rbracesym='}',equalsym='=',
+    plussym='+',minussym='-',mulsym='*',divsym='/',
+    charsym=256,constsym,dosym,
     elsesym,forsym,ifsym,intsym,mainsym,
     printfsym,returnsym,scanfsym,
     voidsym,whilesym,

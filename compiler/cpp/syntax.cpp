@@ -5,11 +5,11 @@
 #include <stdio.h>
 #include <string.h>
 #include "syntax.h"
-#include "lexical.h"
 #include "table.h"
+#include "lexical.h"
 #include "error.h"
 
-#define STATEMENT_SYM ifsym,dosym,forsym,'{',scanfsym,printfsym,returnsym
+#define STATEMENT_SYM ifsym,dosym,forsym,lbracesym,scanfsym,printfsym,returnsym
 
 extern symbol sym;
 
@@ -19,13 +19,12 @@ extern char ch_value;   // value of a character constant
 extern char string_value[MAX_STRING_LENTH];    // value of a string constant
 extern type type_value;
 
-extern quadruples quad_codes[MAX_CODES_LENTH];  //四元式代码表
+extern std::list<quadruples> quad_codes;  //四元式代码表
 extern table_item table[MAX_TABLE_LENTH];
 extern fun_table_item fun_table[MAX_FUN_TABLE_LENTH];
 
 extern int tp; //符号表头指针
 extern int global_position; //函数定义在符号表中的位置
-extern int qp;  //四元式表头指针
 extern int strp;   //字符串常量表头指针
 extern int funp;
 
@@ -34,10 +33,12 @@ char label[MAX_ID_LENTH];   //跳转标签
 
 void new_label(){
     static int i=0;
-    quadruples tmp;
-    tmp = quad_codes[qp-1];
-    if(tmp.op == LABEL){
-        strcpy(label,tmp.r);
+    std::list<quadruples>::iterator tmp;
+    tmp = quad_codes.end();
+    tmp--;
+
+    if(tmp->op == LABEL){
+        strcpy(label,tmp->r);
     } else {
         sprintf(label, "$$%d", i++);
         enter_code(LABEL, "", "", label);
@@ -52,6 +53,8 @@ void new_tempval(){
 void programme(){
 /*程序解析入口*/
 
+    std::list<quadruples>::iterator tmp;
+
     int has_err = 0;
 
     nextsym();
@@ -62,8 +65,8 @@ void programme(){
     while(sym == intsym || sym == charsym){ // 变量声明
         nextsym();
         if(sym != identsym){ //不是标识符，报错
-            symbol skipset[SYMBOL_NUM] = {identsym,',',';','(',
-                       voidsym,mainsym,0};
+            std::set<symbol> skipset = {identsym,commasym,semisym,lparensym,
+                       voidsym,mainsym};
             error(11);
             skip(skipset);
             if(sym == identsym){
@@ -75,18 +78,18 @@ void programme(){
         } else {
             nextsym();
         }
-        if(sym == '[' || sym == ',' || sym == ';'){
+        if(sym == lbracketsym || sym == commasym || sym == semisym){
             var_def(1);
         }
-        else if(sym == '('){    // 函数声明
+        else if(sym == lparensym){    // 函数声明
             fun_def();
             break;
         }
         else{   //需要"[,;("
-            symbol skipset[SYMBOL_NUM] = {';',intsym,charsym,voidsym,mainsym,0};
+            std::set<symbol> skipset = {semisym,intsym,charsym,voidsym,mainsym};
             error(39);
             skip(skipset);
-            if(sym == ';'){
+            if(sym == semisym){
                 nextsym();
             }
         }
@@ -97,13 +100,13 @@ void programme(){
             nextsym();
             if (sym == identsym) {
                 nextsym();
-                if(sym == '('){
+                if(sym == lparensym){
                     fun_def();
                 } else{ //需要一个(
-                    symbol skipset[SYMBOL_NUM] = {intsym,charsym,voidsym,mainsym,'{',0};
+                    std::set<symbol> skipset = {intsym,charsym,voidsym,mainsym,lbracesym};
                     error(12);
                     skip(skipset);
-                    if(sym == '{'){
+                    if(sym == lbracesym){
                         nextsym();
                         block();
                     }
@@ -111,10 +114,10 @@ void programme(){
             } else if (sym == mainsym) {    // 读到了main
                 break;
             } else {   //void后不是标识符也不是main
-                symbol skipset[SYMBOL_NUM] = {intsym,charsym,voidsym,mainsym,'{',0};
+                std::set<symbol> skipset = {intsym,charsym,voidsym,mainsym,lbracesym};
                 error(11);
                 skip(skipset);
-                if(sym == '{'){
+                if(sym == lbracesym){
                     nextsym();
                     block();
                 }
@@ -125,10 +128,10 @@ void programme(){
                 nextsym();
                 fun_def();
             } else {   //int、char后不是标识符
-                symbol skipset[SYMBOL_NUM] = {intsym,charsym,voidsym,mainsym,'{',0};
+                std::set<symbol> skipset = {intsym,charsym,voidsym,mainsym,lbracesym};
                 error(11);
                 skip(skipset);
-                if(sym == '{'){
+                if(sym == lbracesym){
                     nextsym();
                     block();
                 }
@@ -138,20 +141,23 @@ void programme(){
 
     if(sym == mainsym){
         enter("main", FUNCTION, VOID, funp, 1, 0);
-        enter_fun_table("main", qp, 0, 0);
+
+        tmp = quad_codes.end();
+        tmp--;
+        enter_fun_table("main", tmp, tmp, 0);
 
         symbol sym1, sym2;
         nextsym();
         sym1 = sym;
         nextsym();
         sym2 = sym;
-        if(sym1 == '(' && sym2 == ')'){
+        if(sym1 == lparensym && sym2 == rparensym){
             nextsym();
         } else{ //main后面需要一对括号
             error(14);
             has_err = 1;
         }
-        if(sym == '{' || has_err){
+        if(sym == lbracesym || has_err){
             nextsym();
         } else{ //需要一个{
             error(15);
@@ -159,7 +165,7 @@ void programme(){
         }
 
         if(has_err){
-            symbol skipset[SYMBOL_NUM] = {'{',0};
+            std::set<symbol> skipset = {lbracesym};
             skip(skipset);
             nextsym();
         }
@@ -167,7 +173,10 @@ void programme(){
         block();
 
         table[global_position].lenth = tp - global_position-1;
-        fun_table[funp-1].end = qp-1;
+        fun_table[funp-1].begin++;
+        tmp = quad_codes.end();
+        tmp--;
+        fun_table[funp-1].end = tmp;
     } else {    //没有main
         error(26);
     }
@@ -190,7 +199,7 @@ void const_def(int isglobal){
             nextsym();
             if (sym == identsym) {
                 nextsym();
-                if (sym == '=') {
+                if (sym == equalsym) {
                     nextsym();
                     if (sym == integersym) {
 
@@ -214,8 +223,8 @@ void const_def(int isglobal){
 
                         nextsym();
                     }
-                    else if (sym == '+' || sym == '-') {
-                        if (sym == '-') {
+                    else if (sym == plussym || sym == minussym) {
+                        if (sym == minussym) {
                             is_minus = 1;
                         }
                         nextsym();
@@ -253,14 +262,14 @@ void const_def(int isglobal){
                 has_err = 1;
                 break;
             }
-        }while (sym == ',');
+        }while (sym == commasym);
     }
     else if(sym == charsym){
         do {
             nextsym();
             if (sym == identsym) {
                 nextsym();
-                if (sym == '=') {
+                if (sym == equalsym) {
                     nextsym();
                     if (sym == charactersym) {
 
@@ -287,7 +296,7 @@ void const_def(int isglobal){
                 has_err = 1;
                 break;
             }
-        }while (sym == ',');
+        }while (sym == commasym);
     }
     else{   //需要一个int 或 char
         error(23);
@@ -296,13 +305,13 @@ void const_def(int isglobal){
 
     if(has_err){
         if(isglobal) {
-            symbol skipset[SYMBOL_NUM] = {intsym, charsym, voidsym, constsym, mainsym, ';', 0};
+            std::set<symbol> skipset = {intsym, charsym, voidsym, constsym, mainsym, semisym};
             skip(skipset);
         } else{
-            symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM, intsym, charsym, constsym, ';', 0};
+            std::set<symbol> skipset = {STATEMENT_SYM, intsym, charsym, constsym, semisym};
             skip(skipset);
         }
-        if(sym == ';'){
+        if(sym == semisym){
             nextsym();
         }
     } else {
@@ -338,7 +347,7 @@ void var_def(int isglobal){
             has_skip = 0;
         }
 
-        if (sym == ',' || sym == ';') {
+        if (sym == commasym || sym == semisym) {
 
             i = find(ident);
             if(i == -1 || table[i].isglobal != isglobal) {
@@ -348,7 +357,7 @@ void var_def(int isglobal){
             }
 
         }
-        else if (sym == '[') {
+        else if (sym == lbracketsym) {
             nextsym();
             if(sym == integersym){
 
@@ -366,9 +375,9 @@ void var_def(int isglobal){
                 break;
             }
 
-            if(sym == ']'){
+            if(sym == rbracketsym){
                 nextsym();
-                if(sym == ';' || sym == ','){}
+                if(sym == semisym || sym == commasym){}
                 else{   //需要;或,
                     error(39);
                     has_err = 1;
@@ -385,17 +394,17 @@ void var_def(int isglobal){
             has_err = 1;
             break;
         }
-    }while(sym == ',');
+    }while(sym == commasym);
 
     if(has_err){
         if(isglobal) {
-            symbol skipset[SYMBOL_NUM] = {intsym, charsym, voidsym, mainsym, ';', 0};
+            std::set<symbol> skipset = {intsym, charsym, voidsym, mainsym, semisym};
             skip(skipset);
         } else{
-            symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM, intsym, charsym, ';', 0};
+            std::set<symbol> skipset = {STATEMENT_SYM, intsym, charsym, semisym};
             skip(skipset);
         }
-        if(sym == ';'){
+        if(sym == semisym){
             nextsym();
         }
     } else {
@@ -409,6 +418,8 @@ void fun_def(){
 出口symbol为"}"下一个*/
 
     const int max_para = 127;
+
+    std::list<quadruples>::iterator tmp;
 
     int i;
     int para_count = 0; //参数个数
@@ -448,51 +459,54 @@ void fun_def(){
                 break;
             }
         }
-        else if(sym == ')'){}
+        else if(sym == rparensym){}
         else{ //需要int或char或)
             error(13);
             has_err = 1;
             break;
         }
-    }while(sym == ',');
-    enter_fun_table(fun_name,qp,0,para_count);
+    }while(sym == commasym);
+    tmp = quad_codes.end();
+    tmp--;
+    enter_fun_table(fun_name,tmp,tmp,para_count);
 
     if(has_err){
-        symbol skipset[SYMBOL_NUM] = {'{','}',')',voidsym,mainsym,0};
+        std::set<symbol> skipset = {lbracesym,rbracesym,commasym,rparensym,voidsym,mainsym};
         skip(skipset);
-        if(sym!='{' && sym!=')'){
+        if(sym!=lbracesym && sym!=rparensym){
             return;
         }
     }
 
-    if(sym == ')' || has_err){
+    if(sym == rparensym || has_err){
         nextsym();
     } else{ //需要一个)
         error(13);
     }
 
-    if(sym == '{'){
+    if(sym == lbracesym){
         nextsym();
         //进入函数声明体
         block();
-        if(quad_codes[qp-1].op!=RETURN) {
-            enter_code(RETURN, "", "", "");
-        }
+        enter_code(RETURN, "", "", "");
 
         table[global_position].lenth = tp - global_position-1;
-        fun_table[funp-1].end = qp-1;
+        fun_table[funp-1].begin++;
+        tmp = quad_codes.end();
+        tmp--;
+        fun_table[funp-1].end = tmp;
 
     } else{ //需要一个{
-        symbol skipset[SYMBOL_NUM] = {'}', voidsym, mainsym,0};
+        std::set<symbol> skipset = {rbracesym, voidsym, mainsym};
         error(15);
         skip(skipset);
-        if(sym == '}'){
+        if(sym == rbracesym){
             nextsym();
         }
         return;
     }
 
-    if(sym == '}'){
+    if(sym == rbracesym){
         nextsym();
     } else{ //需要一个}
         error(16);
@@ -532,14 +546,14 @@ void statement(){
     else if(sym == forsym){
         for_state();
     }
-    else if(sym == '{'){
+    else if(sym == lbracesym){
         nextsym();
         multi_state();
         nextsym();
     }
     else if(sym == identsym){
         nextsym();
-        if(sym == '('){
+        if(sym == lparensym){
 
             i = find(ident);
             if(i == -1){    //标识符未定义
@@ -554,15 +568,15 @@ void statement(){
             }
             semicolon();
         }
-        else if(sym == '=' || sym == '['){
+        else if(sym == equalsym || sym == lbracketsym){
             assign_state();
         }
         else{   //需要"(=["
-            symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                       '}',';',0};
+            std::set<symbol> skipset = {STATEMENT_SYM,
+                       rbracesym,semisym};
             error(19);
             skip(skipset);
-            if(sym == ';'){
+            if(sym == semisym){
                 nextsym();
             }
         }
@@ -576,16 +590,16 @@ void statement(){
     else if(sym == returnsym){
         return_state();
     }
-    else if(sym == ';'){
+    else if(sym == semisym){
         //空语句
         nextsym();
     }
     else{   //符号不在语句头符号集中
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                    '}',';',0};
+        std::set<symbol> skipset = {STATEMENT_SYM,
+                    rbracesym,semisym};
         error(31);
         skip(skipset);
-        if(sym == ';'){
+        if(sym == semisym){
             nextsym();
         }
     }
@@ -594,7 +608,7 @@ void statement(){
 void multi_state(){
 /*入口为一个语句的第一个symbol
 出口为"}"*/
-    while(sym != '}'){
+    while(sym != rbracesym){
         statement();
     }
 
@@ -604,17 +618,19 @@ void if_state(){
 /*入口为if
 出口为一条语句后面一个symbol*/
 
-    int branchp;  //if为假的跳转指令地址
-    int jumpp;  //有else时，if为真语句后的跳转指令地址
+    std::list<quadruples>::iterator branchp;  //if为假的跳转指令地址
+    std::list<quadruples>::iterator jumpp;  //有else时，if为真语句后的跳转指令地址
 
     int has_err=0;
 
     nextsym();
-    if(sym == '('){
+    if(sym == lparensym){
         nextsym();
-        branchp = condition(0);
-        if(branchp!=-1) {
-            if (sym == ')') {
+
+        if(condition(0)!=-1) {
+            branchp = quad_codes.end();
+            branchp--;
+            if (sym == rparensym) {
                 nextsym();
             } else {
                 error(13);
@@ -629,10 +645,10 @@ void if_state(){
     }
 
     if(has_err){
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                   ';',')',0};
+        std::set<symbol> skipset = {STATEMENT_SYM,
+                   semisym,rparensym};
         skip(skipset);
-        if(sym == ';' || sym == ')'){
+        if(sym == semisym || sym == rparensym){
             nextsym();
             return;
         }
@@ -640,21 +656,22 @@ void if_state(){
 
     statement();    //if成立的语句
     if(sym == elsesym){ //有else
-        jumpp = qp;
         enter_code(JUMP,"","","");  //if成立要跳过else的语句
+        jumpp = quad_codes.end();
+        jumpp--;
 
         new_label();    //if为假跳到这里
-        strcpy(quad_codes[branchp].r,label);
+        strcpy(branchp->r,label);
 
         nextsym();
         statement();    //else部分语句
 
         new_label();    //if为真跳过else部分语句
-        strcpy(quad_codes[jumpp].r,label);
+        strcpy(jumpp->r,label);
     }
     else{   //没有else，if为假跳到这里
         new_label();
-        strcpy(quad_codes[branchp].r,label);
+        strcpy(branchp->r,label);
     }
 
 
@@ -664,7 +681,8 @@ void do_while_state(){
 /*入口为do
 出口为")"后面一个symbol*/
 
-    int branchp;    //while条件跳转指令地址
+    std::list<quadruples>::iterator branchp;    //while条件跳转指令地址
+
     char label_save[MAX_ID_LENTH];  //保存跳转label
 
     int has_err = 0;
@@ -677,12 +695,14 @@ void do_while_state(){
 
     if(sym == whilesym) {
         nextsym();
-        if(sym == '('){
+        if(sym == lparensym){
             nextsym();
 
-            branchp = condition(1);
-            if(branchp != -1) {
-                strcpy(quad_codes[branchp].r, label_save);
+
+            if(condition(1) != -1) {
+                branchp = quad_codes.end();
+                branchp--;
+                strcpy(branchp->r, label_save);
             } else{
                 has_err = 1;
             }
@@ -696,23 +716,22 @@ void do_while_state(){
     }
 
     if(has_err){
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                   ';',')',0};
+        std::set<symbol> skipset = {STATEMENT_SYM,
+                   semisym,rparensym};
         skip(skipset);
-        if(sym == ';' || sym == ')'){
+        if(sym == semisym || sym == rparensym){
             nextsym();
         }
         return;
     }
 
-    if(sym == ')'){
+    if(sym == rparensym){
         nextsym();
     } else{
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                                      ';',0};
+        std::set<symbol> skipset = {STATEMENT_SYM, semisym};
         error(13);
         skip(skipset);
-        if(sym == ';'){
+        if(sym == semisym){
             nextsym();
         }
     }
@@ -731,12 +750,12 @@ void for_state(){
     char step[MAX_ID_LENTH];   //步长
     char label_save[MAX_ID_LENTH];
     int isinc = 1;  //是否加步长
-    int branchp = -1;
+    std::list<quadruples>::iterator branchp;
     int i;
     int has_err = 1;
 
     nextsym();
-    if(sym == '('){
+    if(sym == lparensym){
         nextsym();
         if(sym == identsym){
 
@@ -747,20 +766,21 @@ void for_state(){
             }
 
             nextsym();
-            if(sym == '='){
+            if(sym == equalsym){
                 nextsym();
                 if(expression(exp)!=-1) {
                     enter_code(MOV, "", exp, id1);
 
-                    if (sym == ';') {
+                    if (sym == semisym) {
 
                         new_label();    //循环结束无条件跳转位置
                         strcpy(label_save, label);
 
                         nextsym();
-                        branchp = condition(0);
-                        if (branchp != -1) {
-                            if (sym == ';') {
+                        if (condition(0) != -1) {
+                            branchp = quad_codes.end();
+                            branchp--;
+                            if (sym == semisym) {
                                 nextsym();
                                 if (sym == identsym) {
 
@@ -773,7 +793,7 @@ void for_state(){
                                     }
 
                                     nextsym();
-                                    if (sym == '=') {
+                                    if (sym == equalsym) {
                                         nextsym();
                                         if (sym == identsym) {
 
@@ -786,9 +806,9 @@ void for_state(){
                                             }
 
                                             nextsym();
-                                            if (sym == '+' || sym == '-') {
+                                            if (sym == plussym || sym == minussym) {
 
-                                                if (sym == '+') {
+                                                if (sym == plussym) {
                                                     isinc = 1;
                                                 } else {
                                                     isinc = 0;
@@ -798,10 +818,10 @@ void for_state(){
                                                 if (sym == integersym) {
                                                     sprintf(step, "%d", int_value);
                                                     nextsym();
-                                                    if (sym == ')') {
+                                                    if (sym == rparensym) {
                                                         nextsym();
                                                         has_err = 0;
-                                                    } else { //需要一个')'
+                                                    } else { //需要一个rparensym
                                                         error(13);
                                                     }
                                                 } else { //需要一个无符号整数
@@ -833,15 +853,15 @@ void for_state(){
         } else{ //需要一个标识符
             error(11);
         }
-    } else{ //需要一个'('
+    } else{ //需要一个lparensym
         error(12);
     }
 
     if(has_err){
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                                      ';',')',0};
+        std::set<symbol> skipset = {STATEMENT_SYM,
+                                      semisym,rparensym};
         skip(skipset);
-        if(sym == ';' || sym == ')'){
+        if(sym == semisym || sym == rparensym){
             nextsym();
             return;
         }
@@ -855,9 +875,9 @@ void for_state(){
     }
     enter_code(JUMP,"","",label_save);   //跳回判断处
 
-    if(branchp !=-1) {  //没有语法错误生成了跳转语句
+    if(!has_err) {  //没有语法错误生成了跳转语句
         new_label();
-        strcpy(quad_codes[branchp].r, label);    //循环条件判断失败时跳到这里
+        strcpy(branchp->r, label);    //循环条件判断失败时跳到这里
     }
 
 
@@ -865,7 +885,7 @@ void for_state(){
 
 void semicolon(){
 /*检测一个分号*/
-    if(sym == ';'){
+    if(sym == semisym){
         nextsym();
     } else{ //需要一个分号
         error(39);
@@ -888,16 +908,16 @@ int call_state(char *id){
     strcpy(fun_name,id);
     do{
         nextsym();
-        if(sym == ')'){}
+        if(sym == rparensym){}
         else{
             if(expression(exp)==-1){
-                symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                ';',')',0};
+                std::set<symbol> skipset = {STATEMENT_SYM,
+                semisym,rparensym};
                 skip(skipset);
-                if(sym == ';'){
+                if(sym == semisym){
                     nextsym();
                     return para_count;
-                } else if(sym == ')'){
+                } else if(sym == rparensym){
                     continue;
                 } else{
                     return para_count;
@@ -908,21 +928,20 @@ int call_state(char *id){
             }
             para_count++;
         }
-    }while(sym == ',');
+    }while(sym == commasym);
 
     for(i=0;i<para_count;i++){
         sprintf(temp,"%d",i);
         enter_code(PARAIN,temp,para[i],fun_name);
     }
 
-    if(sym == ')'){
+    if(sym == rparensym){
         nextsym();
     } else{
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                                      ';',0};
+        std::set<symbol> skipset = {STATEMENT_SYM, semisym};
         error(13);
         skip(skipset);
-        if(sym == ';'){
+        if(sym == semisym){
             nextsym();
         }
     }
@@ -952,7 +971,7 @@ void assign_state(){
         error(101);
     }
 
-    if(sym == '='){
+    if(sym == equalsym){
 
         if( i!=-1 && !((item.ca == VAR || item.ca == PARA) && item.lenth==0)){ //不是非数组变量
             error(105);
@@ -963,7 +982,7 @@ void assign_state(){
             has_err = 0;
         }
     }
-    else if(sym == '['){
+    else if(sym == lbracketsym){
 
         if( i!=-1 && !(item.ca == VAR && item.lenth!=0)){ //不是数组变量
             error(104);
@@ -973,9 +992,9 @@ void assign_state(){
 
         if(expression(exp)!=-1) {
             strcpy(temp, exp);
-            if (sym == ']') {
+            if (sym == rbracketsym) {
                 nextsym();
-                if (sym == '=') {
+                if (sym == equalsym) {
                     nextsym();
                     if(expression(exp)!=-1) {
                         enter_code(WAR, left_ident, temp, exp);
@@ -994,10 +1013,10 @@ void assign_state(){
     }
 
     if(has_err){
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                   ';',0};
+        std::set<symbol> skipset = {STATEMENT_SYM,
+                   semisym};
         skip(skipset);
-        if(sym == ';'){
+        if(sym == semisym){
             nextsym();
         }
     } else{
@@ -1015,7 +1034,7 @@ void scanf_state(){
     int has_err = 0;
 
     nextsym();
-    if(sym == '('){
+    if(sym == lparensym){
         nextsym();
         if(sym == identsym) {
 
@@ -1033,7 +1052,7 @@ void scanf_state(){
             }
 
             nextsym();
-            while (sym == ','){
+            while (sym == commasym){
                 nextsym();
                 if (sym == identsym) {
 
@@ -1067,22 +1086,20 @@ void scanf_state(){
     }
 
     if(has_err){
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                   ';',0};
+        std::set<symbol> skipset = {STATEMENT_SYM,semisym};
         skip(skipset);
-        if(sym == ';'){
+        if(sym == semisym){
             nextsym();
         }
     } else {
-        if (sym == ')') {
+        if (sym == rparensym) {
             nextsym();
             semicolon();
         } else {
-            symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                                          ';',0};
+            std::set<symbol> skipset = {STATEMENT_SYM,semisym};
             error(13);
             skip(skipset);
-            if(sym == ';'){
+            if(sym == semisym){
                 nextsym();
             }
         }
@@ -1101,7 +1118,7 @@ void printf_state(){
     int has_err = 0;
 
     nextsym();
-    if(sym == '('){
+    if(sym == lparensym){
         nextsym();
         if(sym == nullsym){
             return;
@@ -1113,7 +1130,7 @@ void printf_state(){
             sprintf(temp,"%d",strpt);
             enter_code(PRINTS,"","",temp);
             nextsym();
-            if(sym == ','){
+            if(sym == commasym){
                 nextsym();
                 ischar = expression(exp);
                 if(ischar!=-1) {
@@ -1126,7 +1143,7 @@ void printf_state(){
                     has_err = 1;
                 }
             }
-            else if(sym == ')'){}
+            else if(sym == rparensym){}
             else{   //需要",)"
                 error(13);
                 has_err = 1;
@@ -1149,22 +1166,20 @@ void printf_state(){
     }
 
     if(has_err){
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                   ';',0};
+        std::set<symbol> skipset = {STATEMENT_SYM,semisym};
         skip(skipset);
-        if(sym == ';'){
+        if(sym == semisym){
             nextsym();
         }
     } else {
-        if (sym == ')') {
+        if (sym == rparensym) {
             nextsym();
             semicolon();
         } else {
-            symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                                          ';',0};
+            std::set<symbol> skipset = {STATEMENT_SYM,semisym};
             error(13);
             skip(skipset);
-            if(sym == ';'){
+            if(sym == semisym){
                 nextsym();
             }
         }
@@ -1185,11 +1200,11 @@ void return_state(){
     int has_err = 0;
 
     nextsym();
-    if(sym == '('){
+    if(sym == lparensym){
         nextsym();
         if(expression(exp)!=-1) {
             has_retval = 1;
-            if (sym == ')') {
+            if (sym == rparensym) {
                 nextsym();
             } else {
                 error(13);
@@ -1201,10 +1216,9 @@ void return_state(){
     }
 
     if(has_err){
-        symbol skipset[SYMBOL_NUM] = {STATEMENT_SYM,
-                                      ';',0};
+        std::set<symbol> skipset = {STATEMENT_SYM,semisym};
         skip(skipset);
-        if(sym == ';'){
+        if(sym == semisym){
             nextsym();
         }
         return;
@@ -1304,8 +1318,7 @@ int condition(int branch_true){
         }
     }
 
-
-    return qp-1;
+    return 0;
 }
 
 int factor(char *fname){
@@ -1333,7 +1346,7 @@ int factor(char *fname){
         }
 
         nextsym();
-        if(sym == '['){ //数组
+        if(sym == lbracketsym){ //数组
             if(i != -1){
                 if(!(item.ca == VAR && item.lenth!=0)){
                     error(104);   //不是数组变量
@@ -1349,14 +1362,14 @@ int factor(char *fname){
             new_tempval();
             enter_code(RAR,id_name,temp,tempval);
             strcpy(fname,tempval);
-            if(sym == ']'){
+            if(sym == rbracketsym){
                 nextsym();
             } else{ //需要一个"]"
                 error(18);
                 has_err = 1;
             }
         }
-        else if(sym == '('){    //函数调用
+        else if(sym == lparensym){    //函数调用
             if(i != -1){
                 if(item.ca != FUNCTION || item.typ == VOID){
                     error(107);   //不是函数或无返回值
@@ -1394,8 +1407,8 @@ int factor(char *fname){
 
         }
     }
-    else if(sym == '+' || sym == '-') {
-        if(sym == '-'){
+    else if(sym == plussym || sym == minussym) {
+        if(sym == minussym){
             isneg = 1;
         }
         nextsym();
@@ -1423,13 +1436,13 @@ int factor(char *fname){
         sprintf(fname,"%d",ch_value);
         nextsym();
     }
-    else if(sym == '('){
+    else if(sym == lparensym){
         nextsym();
         ischar = expression(temp);
         if(ischar == -1){
             return -1;
         }
-        if(sym == ')'){
+        if(sym == rparensym){
             strcpy(fname,temp);
             nextsym();
         } else{ //需要一个(
@@ -1464,10 +1477,10 @@ int term(char *tname){
 
     strcpy(current,fname);
 
-    while(sym == '*' || sym == '/'){
+    while(sym == mulsym || sym == divsym){
 
         ischar = 0;
-        if(sym == '*'){
+        if(sym == mulsym){
             op = MUL;
         } else{
             op = DIV;
@@ -1500,8 +1513,8 @@ int expression(char *exp){
     quadop op;
     int ischar;
 
-    if(sym == '+' || sym == '-'){
-        if(sym == '-'){
+    if(sym == plussym || sym == minussym){
+        if(sym == minussym){
             isneg = 1;
         }
         nextsym();
@@ -1521,9 +1534,9 @@ int expression(char *exp){
         strcpy(current,tname);
     }
 
-    while(sym == '+' || sym == '-'){
+    while(sym == plussym || sym == minussym){
         ischar = 0;
-        if(sym == '+'){
+        if(sym == plussym){
             op = ADD;
         } else{
             op = SUB;

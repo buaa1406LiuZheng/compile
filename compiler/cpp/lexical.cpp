@@ -5,10 +5,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-#include "lexical.h"
 #include "error.h"
 #include "table.h"
+
+#include "lexical.h"
+
 
 extern FILE* fsrc;
 extern symbol sym; // current read symbol
@@ -228,7 +229,7 @@ void equal(){
         nextch();
     }
     else{
-        sym = '=';
+        sym = (symbol)'=';
     }
 }
 
@@ -267,7 +268,7 @@ void nextsym(){
         equal();
     }
     else {
-        sym = ch;
+        sym = (symbol)ch;
         nextch();
     }
 }
