@@ -19,12 +19,13 @@ extern char ch_value;   // value of a character constant
 extern char string_value[MAX_STRING_LENTH];    // value of a string constant
 extern type type_value;
 
-extern std::list<quadruples> quad_codes;  //四元式代码表
+extern quadruples quad_codes[MAX_CODES_LENTH];  //四元式代码表
 extern table_item table[MAX_TABLE_LENTH];
 extern fun_table_item fun_table[MAX_FUN_TABLE_LENTH];
 
 extern int tp; //符号表头指针
 extern int global_position; //函数定义在符号表中的位置
+extern int qp;  //四元式表头指针
 extern int strp;   //字符串常量表头指针
 extern int funp;
 
@@ -33,12 +34,10 @@ char label[MAX_ID_LENTH];   //跳转标签
 
 void new_label(){
     static int i=0;
-    std::list<quadruples>::iterator tmp;
-    tmp = quad_codes.end();
-    tmp--;
-
-    if(tmp->op == LABEL){
-        strcpy(label,tmp->r);
+    quadruples tmp;
+    tmp = quad_codes[qp-1];
+    if(tmp.op == LABEL){
+        strcpy(label,tmp.r);
     } else {
         sprintf(label, "$$%d", i++);
         enter_code(LABEL, "", "", label);
@@ -52,8 +51,6 @@ void new_tempval(){
 
 void programme(){
 /*程序解析入口*/
-
-    std::list<quadruples>::iterator tmp;
 
     int has_err = 0;
 
@@ -142,9 +139,7 @@ void programme(){
     if(sym == mainsym){
         enter("main", FUNCTION, VOID, funp, 1, 0);
 
-        tmp = quad_codes.end();
-        tmp--;
-        enter_fun_table("main", tmp, tmp, 0);
+        enter_fun_table("main", qp, 0, 0);
 
         symbol sym1, sym2;
         nextsym();
@@ -173,10 +168,7 @@ void programme(){
         block();
 
         table[global_position].lenth = tp - global_position-1;
-        fun_table[funp-1].begin++;
-        tmp = quad_codes.end();
-        tmp--;
-        fun_table[funp-1].end = tmp;
+        fun_table[funp-1].end = qp-1;
     } else {    //没有main
         error(26);
     }
@@ -419,8 +411,6 @@ void fun_def(){
 
     const int max_para = 127;
 
-    std::list<quadruples>::iterator tmp;
-
     int i;
     int para_count = 0; //参数个数
     char fun_name[MAX_ID_LENTH];
@@ -466,9 +456,8 @@ void fun_def(){
             break;
         }
     }while(sym == commasym);
-    tmp = quad_codes.end();
-    tmp--;
-    enter_fun_table(fun_name,tmp,tmp,para_count);
+
+    enter_fun_table(fun_name,qp,0,para_count);
 
     if(has_err){
         std::set<symbol> skipset = {lbracesym,rbracesym,commasym,rparensym,voidsym,mainsym};
@@ -491,10 +480,7 @@ void fun_def(){
         enter_code(RETURN, "", "", "");
 
         table[global_position].lenth = tp - global_position-1;
-        fun_table[funp-1].begin++;
-        tmp = quad_codes.end();
-        tmp--;
-        fun_table[funp-1].end = tmp;
+        fun_table[funp-1].end = qp-1;
 
     } else{ //需要一个{
         std::set<symbol> skipset = {rbracesym, voidsym, mainsym};
@@ -618,18 +604,16 @@ void if_state(){
 /*入口为if
 出口为一条语句后面一个symbol*/
 
-    std::list<quadruples>::iterator branchp;  //if为假的跳转指令地址
-    std::list<quadruples>::iterator jumpp;  //有else时，if为真语句后的跳转指令地址
+    int branchp;  //if为假的跳转指令地址
+    int jumpp;  //有else时，if为真语句后的跳转指令地址
 
     int has_err=0;
 
     nextsym();
     if(sym == lparensym){
         nextsym();
-
-        if(condition(0)!=-1) {
-            branchp = quad_codes.end();
-            branchp--;
+        branchp = condition(0);
+        if(branchp != -1) {
             if (sym == rparensym) {
                 nextsym();
             } else {
@@ -656,22 +640,21 @@ void if_state(){
 
     statement();    //if成立的语句
     if(sym == elsesym){ //有else
+        jumpp = qp;
         enter_code(JUMP,"","","");  //if成立要跳过else的语句
-        jumpp = quad_codes.end();
-        jumpp--;
 
         new_label();    //if为假跳到这里
-        strcpy(branchp->r,label);
+        strcpy(quad_codes[branchp].r,label);
 
         nextsym();
         statement();    //else部分语句
 
         new_label();    //if为真跳过else部分语句
-        strcpy(jumpp->r,label);
+        strcpy(quad_codes[jumpp].r,label);
     }
     else{   //没有else，if为假跳到这里
         new_label();
-        strcpy(branchp->r,label);
+        strcpy(quad_codes[branchp].r,label);
     }
 
 
@@ -681,7 +664,7 @@ void do_while_state(){
 /*入口为do
 出口为")"后面一个symbol*/
 
-    std::list<quadruples>::iterator branchp;    //while条件跳转指令地址
+    int branchp;    //while条件跳转指令地址
 
     char label_save[MAX_ID_LENTH];  //保存跳转label
 
@@ -697,12 +680,9 @@ void do_while_state(){
         nextsym();
         if(sym == lparensym){
             nextsym();
-
-
-            if(condition(1) != -1) {
-                branchp = quad_codes.end();
-                branchp--;
-                strcpy(branchp->r, label_save);
+            branchp = condition(1);
+            if(branchp != -1) {
+                strcpy(quad_codes[branchp].r, label_save);
             } else{
                 has_err = 1;
             }
@@ -750,7 +730,7 @@ void for_state(){
     char step[MAX_ID_LENTH];   //步长
     char label_save[MAX_ID_LENTH];
     int isinc = 1;  //是否加步长
-    std::list<quadruples>::iterator branchp;
+    int branchp;
     int i;
     int has_err = 1;
 
@@ -777,9 +757,8 @@ void for_state(){
                         strcpy(label_save, label);
 
                         nextsym();
-                        if (condition(0) != -1) {
-                            branchp = quad_codes.end();
-                            branchp--;
+                        branchp = condition(0);
+                        if (branchp != -1) {
                             if (sym == semisym) {
                                 nextsym();
                                 if (sym == identsym) {
@@ -877,7 +856,7 @@ void for_state(){
 
     if(!has_err) {  //没有语法错误生成了跳转语句
         new_label();
-        strcpy(branchp->r, label);    //循环条件判断失败时跳到这里
+        strcpy(quad_codes[branchp].r, label);    //循环条件判断失败时跳到这里
     }
 
 
@@ -978,7 +957,17 @@ void assign_state(){
         }
         nextsym();
         if(expression(exp)!=-1) {
-            enter_code(MOV, "", exp, left_ident);
+            quadruples tmp = quad_codes[qp-1];  //上一条指令
+            if(exp[0]=='#' &&
+                    (tmp.op == ADD || tmp.op == SUB || tmp.op == MUL ||
+                     tmp.op == DIV || tmp.op == RAR || tmp.op == RETVAL ||
+                     tmp.op == MOV || tmp.op == NEG)
+                    && strcmp(exp,tmp.r)==0){
+                strcpy(quad_codes[qp-1].r,left_ident);
+            } else {
+                enter_code(MOV, "", exp, left_ident);
+            }
+//            enter_code(MOV, "", exp, left_ident);
             has_err = 0;
         }
     }
@@ -1318,7 +1307,7 @@ int condition(int branch_true){
         }
     }
 
-    return 0;
+    return qp-1;
 }
 
 int factor(char *fname){

@@ -13,13 +13,13 @@
 
 extern FILE* fsrc;
 extern symbol sym; // current read symbol
-extern char ch; // next characterextern
+
 extern int last_line_number;
 int line_number = 1;
-
-extern char line[MAX_LINE_LENTH]; // buffer for a line of code
-extern int ll; // length of current line
-extern int cp; // current character pointerextern
+char line[MAX_LINE_LENTH]; // buffer for a line of code
+int ll; // length of current line
+int cp; // current character pointerextern
+char ch = ' '; // next character
 
 extern char ident[MAX_ID_LENTH];
 extern int int_value;  // value of an integer constant
@@ -39,7 +39,7 @@ const symbol reserved_words_symbol[RESERVED_WORDS_NUM] = {
         voidsym,whilesym
 };
 
-char ch = ' '; // next character
+
 
 void nextch(){
     char* eof_indicator;

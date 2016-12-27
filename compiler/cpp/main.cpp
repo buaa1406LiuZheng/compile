@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <list>
 #include "lexical.h"
 #include "syntax.h"
 #include "table.h"
 #include "mips.h"
+#include "optimize.h"
 
 FILE *fsrc;
 FILE *fout;
@@ -12,11 +12,7 @@ FILE *fout;
 symbol sym=nullsym; // current read symbol
 
 //词法分析
-char line[MAX_LINE_LENTH]; // buffer for a line of code
-int ll=0; // length of current line
-int cp=0; // current character pointer
 int last_line_number;
-
 char ident[MAX_ID_LENTH];
 int int_value = 0;  // value of an integer constant
 char ch_value = 0;   // value of a character constant
@@ -25,12 +21,13 @@ type type_value;
 
 //语法分析
 table_item table[MAX_TABLE_LENTH];  //符号表
-std::list<quadruples> quad_codes;  //四元式代码表
+quadruples quad_codes[MAX_CODES_LENTH];  //四元式代码表
 char string_table[MAX_STRING_CONST_STORAGE_LENTH];  //字符串常量表
 fun_table_item fun_table[MAX_FUN_TABLE_LENTH];
 
 int tp = 0; //符号表头指针
 int global_position = 0;    //最后一个全局变量在符号表中的位置
+int qp = 0; //四元式表头指针
 int strp = 0;   //字符串常量表头指针
 int funp = 0;   //函数表头指针
 
@@ -38,7 +35,10 @@ int funp = 0;   //函数表头指针
 int error_count = 0;
 
 //优化和代码生成
-fun_table_item fun;
+int is_optimize;
+fun_table_item fun; //正在被处理的函数
+std::vector<bblock> basic_blocks;   //所有的基本块
+std::vector<quadruples> opt_codes;  //优化后的四元式
 
 int main(int argc, char** argv){
 
@@ -53,15 +53,15 @@ int main(int argc, char** argv){
         exit(-1);
     }
 
+    printf("optimize option:\n");
+    scanf("%d",&is_optimize);
+
     programme();
     if(error_count > 0){
         printf("programme has errors");
         return 0;
     }
-
-    print_code_table();
-    print_fun_table();
-
+    print_table();
     mips_gen();
     printf("misp code generation done\n");
 

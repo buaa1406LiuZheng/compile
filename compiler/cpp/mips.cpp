@@ -4,12 +4,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <vector>
 #include "mips.h"
 #include "table.h"
 #include "optimize.h"
 #include "error.h"
 
-extern std::list<quadruples> quad_codes;    //四元式链表
+extern quadruples quad_codes[MAX_CODES_LENTH];;    //四元式链表
 extern fun_table_item fun_table[MAX_FUN_TABLE_LENTH];
 extern table_item table[MAX_TABLE_LENTH];  //符号表
 extern char string_table[MAX_STRING_CONST_STORAGE_LENTH];  //字符串常量表
@@ -24,6 +25,12 @@ local_val local_table[MAX_LOCAL_VAL];   //局部变量表，存储局部变量�
 int ltp;    //局部变量表头指针
 int offset; //局部变量在活动记录中相对基地址的偏移量
 extern fun_table_item fun; //正在被处理的函数
+
+extern int is_optimize;
+extern std::vector<bblock> basic_blocks;   //所有的基本块
+extern std::vector<quadruples> opt_codes;  //优化后的四元式
+std::vector<quadruples> opt_fun_codes;
+
 
 void enter_local(char *id, int position, int is_in_reg){
     local_val temp;
@@ -862,11 +869,10 @@ void localtab_initialize(){
 
     const int fisrt_para_offset = -16;
 
-    int i,j;
+    int i,j,k;
     int para_offset;    //参数的偏移
     int tempval_begin;  //临时变量在局部变量表中的起始地址
     quadruples temp_code;
-    std::list<quadruples>::iterator k;
 
     offset = offset - 4;
     para_offset = fisrt_para_offset;  //第一个参数偏移为-16
@@ -899,9 +905,10 @@ void localtab_initialize(){
         }
     }
     tempval_begin = ltp;
+
     //在初始化临时变量的地址
-    for(k = fun.begin;k!=fun.end;k++){
-        temp_code = *k;
+    for(k = fun.begin;k<=fun.end;k++){
+        temp_code = quad_codes[k];
         if(temp_code.r[0]=='#'){    //操作数r
             for(j = tempval_begin;j<ltp;j++){
                 if(strcmp(temp_code.r, local_table[j].name) == 0){
@@ -964,9 +971,108 @@ void fun_initialize(){
     localtab_initialize();
 }
 
+void quad2mips(quadruples quad){
+    switch (quad.op) {
+        case NONEOP: {
+            break;
+        }
+        case ADD: {
+            add_gen(quad);
+            break;
+        }
+        case SUB: {
+            sub_gen(quad);
+            break;
+        }
+        case MUL: {
+            mul_gen(quad);
+            break;
+        }
+        case DIV: {
+            div_gen(quad);
+            break;
+        }
+        case BEQ: {
+            beq_gen(quad);
+            break;
+        }
+        case BNE: {
+            bne_gen(quad);
+            break;
+        }
+        case BGE: {
+            bge_gen(quad);
+            break;
+        }
+        case BGT: {
+            bgt_gen(quad);
+            break;
+        }
+        case BLE: {
+            ble_gen(quad);
+            break;
+        }
+        case BLT: {
+            blt_gen(quad);
+            break;
+        }
+        case JUMP: {
+            jump_gen(quad);
+            break;
+        }
+        case LABEL: {
+            label_gen(quad);
+            break;
+        }
+        case RAR: {
+            rar_gen(quad);
+            break;
+        }
+        case WAR: {
+            war_gen(quad);
+            break;
+        }
+        case MOV: {
+            mov_gen(quad);
+            break;
+        }
+        case NEG: {
+            neg_gen(quad);
+            break;
+        }
+        case PRINTS:
+        case PRINTI:
+        case PRINTC:
+        case PRINTLN: {
+            print_gen(quad);
+            break;
+        }
+        case SCANI:
+        case SCANC: {
+            scan_gen(quad);
+            break;
+        }
+        case PARAIN: {
+            para_gen(quad);
+            break;
+        }
+        case CALL: {
+            call_gen(quad);
+            break;
+        }
+        case RETURN: {
+            return_gen(quad);
+            break;
+        }
+        case RETVAL: {
+            retval_gen(quad);
+            break;
+        }
+    }
+}
+
 void mips_gen(){
     int i;
-    std::list<quadruples>::iterator j;
     quadruples quad;
 
     initialize();
@@ -984,115 +1090,31 @@ void mips_gen(){
             fun_initialize();
         }
 
-//        printf("\n%s",fun.name);
-//        print_local_table();
+        printf("\n########%s##########\n",fun.name);
 
-        j = fun.begin;
-        while(true){
-            quad = *j;
-            switch (quad.op) {
-                case NONEOP: {
-                    break;
-                }
-                case ADD: {
-                    add_gen(quad);
-                    break;
-                }
-                case SUB: {
-                    sub_gen(quad);
-                    break;
-                }
-                case MUL: {
-                    mul_gen(quad);
-                    break;
-                }
-                case DIV: {
-                    div_gen(quad);
-                    break;
-                }
-                case BEQ: {
-                    beq_gen(quad);
-                    break;
-                }
-                case BNE: {
-                    bne_gen(quad);
-                    break;
-                }
-                case BGE: {
-                    bge_gen(quad);
-                    break;
-                }
-                case BGT: {
-                    bgt_gen(quad);
-                    break;
-                }
-                case BLE: {
-                    ble_gen(quad);
-                    break;
-                }
-                case BLT: {
-                    blt_gen(quad);
-                    break;
-                }
-                case JUMP: {
-                    jump_gen(quad);
-                    break;
-                }
-                case LABEL: {
-                    label_gen(quad);
-                    break;
-                }
-                case RAR: {
-                    rar_gen(quad);
-                    break;
-                }
-                case WAR: {
-                    war_gen(quad);
-                    break;
-                }
-                case MOV: {
-                    mov_gen(quad);
-                    break;
-                }
-                case NEG: {
-                    neg_gen(quad);
-                    break;
-                }
-                case PRINTS:
-                case PRINTI:
-                case PRINTC:
-                case PRINTLN: {
-                    print_gen(quad);
-                    break;
-                }
-                case SCANI:
-                case SCANC:{
-                    scan_gen(quad);
-                    break;
-                }
-                case PARAIN: {
-                    para_gen(quad);
-                    break;
-                }
-                case CALL: {
-                    call_gen(quad);
-                    break;
-                }
-                case RETURN: {
-                    return_gen(quad);
-                    break;
-                }
-                case RETVAL: {
-                    retval_gen(quad);
-                    break;
+        if(is_optimize){
+            opt_fun_codes.clear();
+            gen_block();
+
+            for(int j = 0;j<basic_blocks.size();j++) {
+
+                gen_dag(basic_blocks[j]);
+                for(int k=0;k<opt_codes.size();k++){
+                    if(opt_codes[k].op!=NONEOP) {
+                        opt_fun_codes.push_back(opt_codes[k]);
+                    }
                 }
             }
-            if(j==fun.end){
-                break;
+            for (int j = 0; j < opt_fun_codes.size(); j++) {
+                quad = opt_fun_codes[j];
+                quad2mips(quad);
             }
-            j++;
+        } else {
+            for (int j = fun.begin; j <= fun.end; j++) {
+                quad = quad_codes[j];
+                quad2mips(quad);
+            }
         }
-
     }
 
     fprintf(fout,"\n$$end:\n");
@@ -1107,5 +1129,27 @@ void print_local_table(){
         t = local_table[i];
         printf("%-15s\t%-10d\t%d\n",
                t.name,t.position,t.is_in_reg);
+    }
+}
+
+void print_optfuncode(){
+    const char quarop_string[][20] = {
+            "NONEOP", "ADD", "SUB", "MUL", "DIV",
+            "BEQ", "BNE", "BGE", "BGT", "BLE", "BLT",
+            "JUMP", "LABEL", "RAR", "WAR",
+            "MOV", "NEG",
+            "PRINTS", "PRINTI", "PRINTC", "PRINTLN",
+            "SCANI", "SCANC",
+            "PARAIN", "CALL", "RETURN", "RETVAL"
+    };
+
+    printf("\n%s after dag optimize:\n",fun.name);
+    printf("%-5s\t%-5s\t%-5s\t%-7s\t%-5s\n","ord","r","x","op","y");
+    for(int i=0;i<opt_fun_codes.size();i++){
+        quadruples t = opt_fun_codes[i];
+        char s[30];
+        strcpy(s,quarop_string[t.op]);
+        printf("%-5d\t%-5s\t%-5s\t%-7s\t%-5s\n",
+               i, t.r, t.x, s, t.y);
     }
 }

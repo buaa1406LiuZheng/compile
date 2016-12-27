@@ -6,7 +6,6 @@
 #define COMPILER_SYNTAX_H
 
 #include <set>
-#include <list>
 #include "table.h"
 
 void programme();

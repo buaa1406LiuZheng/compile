@@ -7,13 +7,14 @@
 #include "table.h"
 #include "error.h"
 
-extern std::list<quadruples> quad_codes;  //四元式代码表
+extern quadruples quad_codes[MAX_CODES_LENTH];  //四元式代码表
 extern table_item table[MAX_TABLE_LENTH];
 extern char string_table[MAX_STRING_CONST_STORAGE_LENTH];  //字符串常量表
 extern fun_table_item fun_table[MAX_FUN_TABLE_LENTH];   //函数表
 
 extern int tp; //符号表头指针
 extern int global_position; //函数定义在符号表中的位置
+extern int qp;  //四元式表头指针
 extern int strp;   //字符串常量表头指针
 extern int funp;   //函数表头指针
 
@@ -45,19 +46,16 @@ void enter(char *id, catagory c, type t, int v, int g, int l){
 }
 
 void enter_code(quadop opin,char *xin, char *yin, char *rin){
-
-    static int code_count = 0;
     quadruples qc;
 
-    if(code_count == MAX_CODES_LENTH){  //四元式表满
+    if(tp == MAX_CODES_LENTH){  //四元式表满
         fatal_error();
     } else{
         qc.op = opin;
         strcpy(qc.x,xin);
         strcpy(qc.y,yin);
         strcpy(qc.r,rin);
-        quad_codes.push_back(qc);
-        code_count++;
+        quad_codes[qp++] = qc;
     }
 }
 
@@ -66,8 +64,7 @@ void enter_string_table(char *str){
     strp += (strlen(str)+1);
 }
 
-void enter_fun_table(char* name, std::list<quadruples>::iterator begin,
-                     std::list<quadruples>::iterator end, int para_count){
+void enter_fun_table(char* name, int begin, int end, int para_count){
     fun_table_item fitem;
 
     if(funp == MAX_FUN_TABLE_LENTH){    //函数表满
@@ -85,7 +82,7 @@ void enter_fun_table(char* name, std::list<quadruples>::iterator begin,
 int find(char *id_name){
     int i;
     table_item tmpt;
-    for(i = global_position+1;i<tp;i++){
+    for(i = global_position+1;i<tp && table[i].ca!=FUNCTION;i++){
         tmpt = table[i];
         if(strcmp(id_name,tmpt.name)==0){
             return i;
@@ -140,14 +137,15 @@ void print_table(){
 }
 
 void print_code_table(){
-    std::list<quadruples>::iterator i;
+    int i;
     char s[20];
+    quadruples t;
     printf("\n%-5s\t%-5s\t%-5s\t%-7s\t%-5s\n","ord","r","x","op","y");
-    int count = 1;
-    for(i=quad_codes.begin();i!=quad_codes.end();i++){
-        strcpy(s,quarop_string[i->op]);
+    for(i=0;i<qp;i++){
+        t = quad_codes[i];
+        strcpy(s,quarop_string[t.op]);
         printf("%-5d\t%-5s\t%-5s\t%-7s\t%-5s\n",
-               count++, i->r, i->x, s, i->y);
+               i, t.r, t.x, s, t.y);
     }
 }
 
@@ -159,6 +157,6 @@ void print_fun_table(){
     for(i=0;i<funp;i++){
         t = fun_table[i];
         printf("%-15s\t%-5d\t%d\t%-5d\n",
-               t.name,t.begin->op,t.end->op,t.para_num);
+               t.name,t.begin,t.end,t.para_num);
     }
 }

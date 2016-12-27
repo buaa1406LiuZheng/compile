@@ -5,7 +5,6 @@
 #ifndef COMPILER_TABLE_H
 #define COMPILER_TABLE_H
 
-#include <list>
 #include "lexical.h"
 
 #define MAX_TABLE_LENTH 2048
@@ -46,15 +45,14 @@ typedef struct {
 typedef struct {
     char name[MAX_ID_LENTH];
     int para_num;   //函数参数个数
-    std::list<quadruples>::iterator begin;  //函数开始地址
-    std::list<quadruples>::iterator end;    //函数结束地址
+    int begin;  //函数开始地址
+    int end;    //函数结束地址
 } fun_table_item;
 
 void enter(char *id, catagory c, type t, int v, int g, int l);
 void enter_code(quadop opin,char *xin, char *yin, char *rin);
 void enter_string_table(char *str);
-void enter_fun_table(char* name, std::list<quadruples>::iterator begin,
-                     std::list<quadruples>::iterator end, int para_count);
+void enter_fun_table(char* name, int beging, int end, int para_count);
 int find(char *id_name);
 int find_global(char *id_name);
 
