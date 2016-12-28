@@ -38,10 +38,12 @@ typedef struct {
     std::set<std::string> var;
 } dag_node;
 
-void sreg_alloc(int fp);
-
 void gen_block();
 void gen_dag(bblock &block);
+void gen_conflict_graph();
+
+void sreg_alloc(int fp);
+void sreg_alloc_opt(int fp);
 
 std::map<std::string,use_def> gen_use_def();
 
@@ -49,5 +51,7 @@ void print_block();
 void print_dag();
 void print_optcodes();
 void print_optfuncode();
+void print_inout();
+void print_conflict_graph();
 
 #endif //COMPILER_OPTIMIZE_H

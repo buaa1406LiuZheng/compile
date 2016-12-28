@@ -52,7 +52,7 @@ typedef struct {
 void enter(char *id, catagory c, type t, int v, int g, int l);
 void enter_code(quadop opin,char *xin, char *yin, char *rin);
 void enter_string_table(char *str);
-void enter_fun_table(char* name, int beging, int end, int para_count);
+void enter_fun_table(char* name, int begin, int end, int para_count);
 int find(char *id_name);
 int find_global(char *id_name);
 

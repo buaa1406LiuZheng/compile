@@ -139,7 +139,7 @@ void strings(){
     // string
     int i=0;
     nextch();
-    do{
+    while (ch!='\"'){
         if(ch<32 || ch>126){  // illegal character
             error(3);
             if(ch == '\n'){
@@ -157,7 +157,7 @@ void strings(){
             }
             break;
         }
-    }while (ch!='\"');
+    }
     if(i==MAX_STRING_LENTH){    // string constant too long
         error(4);
         i--;

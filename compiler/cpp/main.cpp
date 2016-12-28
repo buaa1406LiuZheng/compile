@@ -39,6 +39,7 @@ int is_optimize;
 fun_table_item fun; //正在被处理的函数
 std::vector<bblock> basic_blocks;   //所有的基本块
 std::vector<quadruples> opt_codes;  //优化后的四元式
+std::map<std::string, std::set<std::string>> conflict_graph;   //冲突图
 
 int main(int argc, char** argv){
 
@@ -61,8 +62,9 @@ int main(int argc, char** argv){
         printf("programme has errors");
         return 0;
     }
-    print_table();
+
     mips_gen();
+    print_table();
     printf("misp code generation done\n");
 
     fclose(fsrc);

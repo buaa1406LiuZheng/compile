@@ -3,7 +3,6 @@
 //
 
 #include "optimize.h"
-#include "table.h"
 
 extern table_item table[MAX_TABLE_LENTH];  //符号表
 extern quadruples quad_codes[MAX_CODES_LENTH];  //四元式代码表
@@ -13,24 +12,6 @@ extern int tp; //符号表头指针
 extern fun_table_item fun; //正在被处理的函数
 
 extern std::vector<bblock> basic_blocks;   //所有的基本块
-
-void sreg_alloc(int fp){
-    //fp为待分配函数在符号表中的位置
-    int i;
-    int reg_num = 0;
-
-    for(i = fp+1;table[i].ca!=FUNCTION && i<tp;i++){
-        if(reg_num<8){
-            if(table[i].ca==VAR && table[i].lenth==0){
-                //符号表中变量的value域置为被分配的全局寄存器，为正值
-                reg_num++;
-                table[i].value = reg_num;
-            }
-        } else{
-            break;
-        }
-    }
-}
 
 void gen_block(){
 

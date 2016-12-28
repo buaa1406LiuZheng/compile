@@ -33,9 +33,9 @@ void error(int n){
         case 0: {printf("name too long\n");break;}
         case 1: {printf("integer too long\n");break;}
         case 2: {printf("integer begin with 0\n");break;}
-        case 3: {printf("illegal character\n");break;}
+        case 3: {printf("illegal character in string\n");break;}
         case 4: {printf("string too long\n");break;}
-        case 5: {printf("illegal character in string\n");break;}
+        case 5: {printf("illegal character\n");break;}
         case 11: {printf("identity missing\n");break;}
         case 12: {printf("( missing\n");break;}
         case 13: {printf(") missing\n");break;}

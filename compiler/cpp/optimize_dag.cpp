@@ -4,7 +4,6 @@
 
 #include "error.h"
 #include "optimize.h"
-#include "table.h"
 
 extern table_item table[MAX_TABLE_LENTH];
 extern quadruples quad_codes[MAX_CODES_LENTH];  //四元式代码表
@@ -77,12 +76,12 @@ std::string find_name(std::set<std::string> var){
 }
 
 void binop(quadruples quad){
-    //普通双目操作符(+ - * /)，读数组，写数组，双目branch
-    std::map<std::string,int>::iterator itx,ity,itr;
-    int xp,yp,rp;
-    int findx,findy,findr;
-    std::string x,y,r;
-    std::string qx,qy,qr="";
+    //普通双目操作符(+ - * /)，读数组，写数组
+    std::map<std::string,int>::iterator itx,ity,itr;    //节点在项目表的位置
+    int xp,yp,rp;   //节点位置
+    int findx,findy,findr;  //是否找到节点
+    std::string x,y,r;  //原操作数名字
+    std::string qx,qy,qr="";    //优化后的操作数名字
 
     if(quad.op == WAR){
         r = quad.x;
@@ -119,19 +118,19 @@ void binop(quadruples quad){
     qy = find_name(dag[yp].var);
 
     //找有没有相同节点
-    if(findx && findy){
+    if(findx && findy && quad.op!=WAR){
         for(int t=0;t<dp;t++){
             dag_node tmp = dag[t];
             if(quad.op == ADD || quad.op == MUL ||
                quad.op == BEQ || quad.op == BNE) {  //加法乘法、判断是否相等可以有交换律
-                if (tmp.op == quad.op &&
+                if (tmp.op == quad.op && get_type(r) == tmp.typ &&
                         ((tmp.left == xp && tmp.right == yp)||
-                        (tmp.left == yp && tmp.right == xp)) ) {
+                        (tmp.left == yp && tmp.right == xp))) {
                     findr = 1;
                     rp = t;
                 }
             } else{
-                if (tmp.op == quad.op &&
+                if (tmp.op == quad.op && get_type(r) == tmp.typ &&
                         (tmp.left == xp && tmp.right == yp)) {
                     findr = 1;
                     rp = t;
@@ -141,7 +140,7 @@ void binop(quadruples quad){
     }
 
     //生成r的节点
-    if(findr && dag[rp].typ == get_type(r)){  //找到r的节点，且类型正确
+    if(findr){  //找到r的节点
         qr = find_name(dag[rp].var);    //找原来节点名字
         dag[rp].var.insert(r);  //在节点中的变量列表中插入
     } else{ //没有找到r的节点
@@ -163,11 +162,10 @@ void binop(quadruples quad){
 
     //生成新四元式
     quadruples new_quad = newquad();
-    if(quad.op == WAR){   //是跳转或写数组
+    if(quad.op == WAR){   //是写数组
         new_quad = quad;
     } else{ //其他为赋值类型操作
-        if(!qr.empty() &&
-                !(quad.op == BEQ || quad.op == BNE)){   //找到了相同值的节点（公共表达式）
+        if(!qr.empty()){   //找到了相同值的节点（公共表达式）
             new_quad.op = MOV;
             strcpy(new_quad.r,r.c_str());
             strcpy(new_quad.y,qr.c_str());
@@ -183,7 +181,7 @@ void binop(quadruples quad){
 }
 
 void uniop(quadruples quad){
-    //普通单目操作符(取负)，单目branch
+    //普通单目操作符(取负)
 
     std::map<std::string,int>::iterator ity,itr;
     int yp,rp;
@@ -191,14 +189,8 @@ void uniop(quadruples quad){
     std::string y,r;
     std::string qy,qr="";
 
-    if(quad.op == BGE || quad.op == BGT
-       || quad.op == BLE || quad.op == BLT){
-        y = quad.x;
-        r = quad.r;
-    } else {
-        y = quad.y;
-        r = quad.r;
-    }
+    y = quad.y;
+    r = quad.r;
 
     findy = findr = 0;
     rp = -1;
@@ -219,7 +211,7 @@ void uniop(quadruples quad){
     if(findy){
         for(int t=0;t<dp;t++){
             dag_node tmp = dag[t];
-            if(quad.op == tmp.op && tmp.left == yp) {
+            if(quad.op == tmp.op &&  get_type(r) == tmp.typ && tmp.left == yp) {
                 findr = 1;
                 rp = t;
             }
@@ -227,7 +219,7 @@ void uniop(quadruples quad){
     }
 
     //生成r的节点
-    if(findr && dag[rp].typ == get_type(r)){  //找到r的节点
+    if(findr){  //找到r的节点
         qr = find_name(dag[rp].var);    //查找原节点的名字
         dag[rp].var.insert(r);  //在节点中的变量列表中插入
     } else{ //没有找到r的节点
@@ -248,20 +240,13 @@ void uniop(quadruples quad){
 
     //生成新四元式
     quadruples new_quad = newquad();
-    if(!qr.empty() &&
-            !(quad.op == BGE || quad.op == BGT
-              || quad.op == BLE || quad.op == BLT)){   //找到了相同值的节点（公共表达式）
+    if(!qr.empty()){   //找到了相同值的节点（公共表达式）
         new_quad.op = MOV;
         strcpy(new_quad.r,r.c_str());
         strcpy(new_quad.y,qr.c_str());
     } else{
         new_quad.op = quad.op;
-        if(quad.op == BGE || quad.op == BGT
-           || quad.op == BLE || quad.op == BLT){
-            strcpy(new_quad.x, qy.c_str());
-        } else {
-            strcpy(new_quad.y, qy.c_str());
-        }
+        strcpy(new_quad.y, qy.c_str());
         strcpy(new_quad.r,r.c_str());
     }
     opt_codes.push_back(new_quad);
@@ -274,7 +259,7 @@ void assignop(quadruples quad){
     int yp,rp;
     int findy,findr;
     std::string y,r;
-    std::string qy,qr="";
+    std::string qy;
 
     y = quad.y;
     r = quad.r;
@@ -291,21 +276,20 @@ void assignop(quadruples quad){
         yp = ity->second;    //在项目表中的位置
         findy = 1;
     }
+    qy = find_name(dag[yp].var);
 
     //找有没有相同节点，并生成r的节点
     if(dag[yp].typ == get_type(r)) {    //类型相同
         rp = yp;
 
         //生成r的节点
-        qr = find_name(dag[rp].var);    //查找原节点的名字
         dag[rp].var.insert(r);  //在节点中的变量列表中插入
     } else {
-
         //找有没有相同节点
         if(findy){
             for(int t=0;t<dp;t++){
                 dag_node tmp = dag[t];
-                if(quad.op == tmp.op && tmp.left == yp) {
+                if(quad.op == tmp.op && get_type(r) == tmp.typ && tmp.left == yp) {
                     findr = 1;
                     rp = t;
                 }
@@ -313,8 +297,7 @@ void assignop(quadruples quad){
         }
 
         //生成r的节点
-        if(findr && dag[rp].typ == get_type(r)){  //找到r的节点
-            qr = find_name(dag[rp].var);    //查找原节点的名字
+        if(findr){  //找到r的节点
             dag[rp].var.insert(r);  //在节点中的变量列表中插入
         } else{ //没有找到r的节点
             rp = new_node(r);    //创建新节点
@@ -337,16 +320,51 @@ void assignop(quadruples quad){
     quadruples new_quad = newquad();
     new_quad.op = quad.op;
     strcpy(new_quad.r,r.c_str());
-    if(!qr.empty()){   //找到了相同值的节点（公共表达式）
-        strcpy(new_quad.y,qr.c_str());
-    } else{
-        strcpy(new_quad.y,y.c_str());
-    }
+    strcpy(new_quad.y,qy.c_str());
     opt_codes.push_back(new_quad);
 }
 
-void useop(quadruples quad){
-    //print，压参数，函数返回值
+void biuseop(quadruples quad){
+    //双目branch
+
+    std::map<std::string,int>::iterator itx,ity;    //节点在项目表的位置
+    int xp,yp;   //节点位置
+    std::string x,y;  //原操作数名字
+    std::string qx,qy;    //优化后的操作数名字
+
+    x = quad.x;
+    y = quad.y;
+
+    //找子节点
+    itx = dmap.find(x);
+    if(itx==dmap.end()){ //原项目表中没有
+        xp = new_node(x);    //产生一个新节点
+        dmap[x] = xp;   //更新项目表
+    } else{
+        xp = itx->second;    //在项目表中的位置
+    }
+    qx = find_name(dag[xp].var);
+
+    ity = dmap.find(y);
+    if(ity==dmap.end()){ //原项目表中没有
+        yp = new_node(y);    //产生一个新节点
+        dmap[y] = yp;   //更新项目表
+    } else{
+        yp = ity->second;    //在项目表中的位置
+    }
+    qy = find_name(dag[yp].var);
+
+    //生成新四元式
+    quadruples new_quad = newquad();
+    new_quad.op = quad.op;
+    strcpy(new_quad.x,qx.c_str());
+    strcpy(new_quad.y,qy.c_str());
+    strcpy(new_quad.r,quad.r);
+    opt_codes.push_back(new_quad);
+}
+
+void uniuseop(quadruples quad){
+    //print，压参数，函数返回值，单目branch
     std::map<std::string,int>::iterator itr;
     int rp;
     std::string r;
@@ -354,7 +372,10 @@ void useop(quadruples quad){
 
     if(quad.op == PARAIN){
         r = quad.y;
-    } else{
+    } else if(quad.op == BGE || quad.op == BGT
+             || quad.op == BLE || quad.op == BLT){
+        r = quad.x;
+    } else {
         r = quad.r;
     }
 
@@ -373,6 +394,10 @@ void useop(quadruples quad){
     if(quad.op == PARAIN){
         strcpy(new_quad.x,quad.x);
         strcpy(new_quad.y,qr.c_str());
+        strcpy(new_quad.r,quad.r);
+    } else if(quad.op == BGE || quad.op == BGT
+               || quad.op == BLE || quad.op == BLT){
+        strcpy(new_quad.x,qr.c_str());
         strcpy(new_quad.r,quad.r);
     } else{
         strcpy(new_quad.r,qr.c_str());
@@ -433,7 +458,8 @@ void gen_dag(bblock &block){
             case NONEOP: {
                 break;
             }
-            case ADD: case SUB: case MUL: case DIV:{
+            case ADD: case SUB: case MUL: case DIV:
+            case RAR:case WAR: {
                 binop(quad);
                 break;
             }
@@ -445,49 +471,24 @@ void gen_dag(bblock &block){
                 assignop(quad);
                 break;
             }
-            case RAR:{
-                binop(quad);
-                break;
-            }
-            case WAR:{
-                binop(quad);
-                break;
-            }
-            case RETVAL:{
+            case RETVAL:
+            case SCANI: case SCANC: {
                 defop(quad);
-                break;
-            }
-            case PARAIN:{
-                useop(quad);
                 break;
             }
             case BEQ: case BNE:{
-                binop(quad);
+                biuseop(quad);
                 break;
             }
+            case PARAIN:
+            case PRINTI:case PRINTC:
             case BGE:case BGT: case BLE: case BLT:{
-                uniop(quad);
+                uniuseop(quad);
                 break;
             }
-            case JUMP: {
+            case JUMP:case LABEL:
+            case PRINTS:case PRINTLN: {
                 opt_codes.push_back(quad);
-                break;
-            }
-            case LABEL: {
-                opt_codes.push_back(quad);
-                break;
-            }
-            case PRINTS: case PRINTI:
-            case PRINTC:{
-                useop(quad);
-                break;
-            }
-            case PRINTLN: {
-                opt_codes.push_back(quad);
-                break;
-            }
-            case SCANI: case SCANC: {
-                defop(quad);
                 break;
             }
             case CALL: {
@@ -498,20 +499,19 @@ void gen_dag(bblock &block){
                 if((quad.r)[0]=='\0'){  //无返回值
                     opt_codes.push_back(quad);
                 } else{
-                    useop(quad);
+                    uniuseop(quad);
                 }
                 break;
             }
         }
     }
-    print_optcodes();
 
     std::map<std::string,use_def> var_use_def = gen_use_def();
-    std::map<std::string,use_def>::iterator i;
-    for(i = var_use_def.begin();i!=var_use_def.end();i++){
-        std::string id = i->first;
+    std::map<std::string,use_def>::iterator vit;
+    for(vit = var_use_def.begin();vit!=var_use_def.end();vit++){
+        std::string id = vit->first;
         if(id[0]=='#'){ //临时变量
-            use_def tmp = i->second;
+            use_def tmp = vit->second;
             if(tmp.use.size()==0){  //临时变量没有使用
                 for(int j=0;j<tmp.def.size();j++){
                     int defp = (tmp.def)[j];
@@ -524,31 +524,32 @@ void gen_dag(bblock &block){
         }
     }
 
-    for(i = var_use_def.begin();i!=var_use_def.end();i++){
+    for(vit = var_use_def.begin();vit!=var_use_def.end();vit++){
         char id[MAX_ID_LENTH];
-        strcpy(id,(i->first).c_str());
+        strcpy(id,(vit->first).c_str());
         if(id[0]=='#') { //临时变量
             continue;
         } else{
             int p = find(id);
             if(!(table[p].isglobal || table[p].ca == PARA)){
-                block.var_use_def[i->first] = i->second;
+                block.var_use_def[vit->first] = vit->second;
             }
         }
     }
 
-    for(i = block.var_use_def.begin();i!=block.var_use_def.end();i++){
-        printf("%s\n",(i->first).c_str());
-        printf("use:");
-        for(int j=0;j<(i->second).use.size();j++){
-            printf("%d ",((i->second).use)[j]);
-        }
-        printf("\ndef:");
-        for(int j=0;j<(i->second).def.size();j++){
-            printf("%d ",((i->second).def)[j]);
-        }
-        printf("\n");
-    }
+//    print_optcodes();
+//    for( std::map<std::string,use_def>::iterator i = block.var_use_def.begin();i!=block.var_use_def.end();i++){
+//        printf("%s\n",(i->first).c_str());
+//        printf("use:");
+//        for(int j=0;j<(i->second).use.size();j++){
+//            printf("%d ",((i->second).use)[j]);
+//        }
+//        printf("\ndef:");
+//        for(int j=0;j<(i->second).def.size();j++){
+//            printf("%d ",((i->second).def)[j]);
+//        }
+//        printf("\n");
+//    }
 }
 
 void print_dag(){

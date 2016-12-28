@@ -877,8 +877,6 @@ void localtab_initialize(){
     offset = offset - 4;
     para_offset = fisrt_para_offset;  //第一个参数偏移为-16
 
-    sreg_alloc(global_position);
-
     //先初始化参数和局部变量的地址
     for(i = global_position+1; table[i].ca!=FUNCTION && i<tp;i++){
         if(table[i].ca == PARA){
@@ -1097,7 +1095,6 @@ void mips_gen(){
             gen_block();
 
             for(int j = 0;j<basic_blocks.size();j++) {
-
                 gen_dag(basic_blocks[j]);
                 for(int k=0;k<opt_codes.size();k++){
                     if(opt_codes[k].op!=NONEOP) {
@@ -1105,11 +1102,16 @@ void mips_gen(){
                     }
                 }
             }
+            print_optfuncode();
+
+            sreg_alloc_opt(global_position);
+
             for (int j = 0; j < opt_fun_codes.size(); j++) {
                 quad = opt_fun_codes[j];
                 quad2mips(quad);
             }
         } else {
+            sreg_alloc(global_position);
             for (int j = fun.begin; j <= fun.end; j++) {
                 quad = quad_codes[j];
                 quad2mips(quad);
